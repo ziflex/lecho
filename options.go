@@ -39,6 +39,12 @@ func WithLevel(level log.Lvl) Setter {
 	}
 }
 
+func WithField(name string, value interface{}) Setter {
+	return func(opts *Options) {
+		opts.context = opts.context.Interface(name, value)
+	}
+}
+
 func WithFields(fields map[string]interface{}) Setter {
 	return func(opts *Options) {
 		opts.context = opts.context.Fields(fields)
