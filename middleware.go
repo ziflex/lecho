@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Logger *Logger
+	Logger  *Logger
 	Skipper middleware.Skipper
 }
 
@@ -38,8 +38,9 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				c.Error(err)
 			}
 
-			params := make(map[string]interface{})
 			stop := time.Now()
+
+			ctx := config.Logger.log.Log()
 
 			id := req.Header.Get(echo.HeaderXRequestID)
 
@@ -48,33 +49,32 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			}
 
 			if id != "" {
-				params["id"] = id
+				ctx.Str("id", id)
 			}
 
-			params["remote_ip"] = c.RealIP()
-			params["host"] = req.Host
-			params["method"] = req.Method
-			params["uri"] = req.RequestURI
-			params["user_agent"] = req.UserAgent()
-			params["status"] = res.Status
-			params["referer"] = req.Referer()
+			ctx.Str("remote_ip", c.RealIP())
+			ctx.Str("host", req.Host)
+			ctx.Str("method", req.Method)
+			ctx.Str("uri", req.RequestURI)
+			ctx.Str("user_agent", req.UserAgent())
+			ctx.Int("status", res.Status)
+			ctx.Str("referer", req.Referer())
 
 			if err != nil {
-				params["error"] = err
+				ctx.Err(err)
 			}
 
-			params["latency"] = stop.Sub(start)
-			params["latency_human"] = stop.Sub(start).String()
+			ctx.Dur("latency", stop.Sub(start))
+			ctx.Str("latency_human", stop.Sub(start).String())
 
 			cl := req.Header.Get(echo.HeaderContentLength)
 			if cl == "" {
 				cl = "0"
 			}
 
-			params["bytes_in"] = cl
-			params["bytes_out"] = strconv.FormatInt(res.Size, 10)
-
-			config.Logger.Printj(params)
+			ctx.Str("bytes_in", cl)
+			ctx.Str("bytes_out", strconv.FormatInt(res.Size, 10))
+			ctx.Msg("")
 
 			return err
 		}
