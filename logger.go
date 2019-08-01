@@ -155,6 +155,7 @@ func (l Logger) Level() log.Lvl {
 
 func (l *Logger) SetLevel(newLevel log.Lvl) {
 	level := levels[newLevel]
+	l.setters = append(l.setters, WithLevel(newLevel))
 	l.level = newLevel
 	l.log = l.log.Level(level)
 }
@@ -174,6 +175,12 @@ func (l *Logger) SetPrefix(newPrefix string) {
 	l.setters = setters
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
+}
+
+func (l Logger) Clone(setters ...Setter) echo.Logger {
+	s := append(l.setters, setters...)
+
+	return New(l.out, s...)
 }
 
 func (l Logger) logJSON(event *zerolog.Event, j log.JSON) {
