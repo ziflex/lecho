@@ -40,7 +40,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			stop := time.Now()
 
-			ctx := config.Logger.log.Log()
+			evt := config.Logger.log.Log()
 
 			id := req.Header.Get(echo.HeaderXRequestID)
 
@@ -49,32 +49,32 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			}
 
 			if id != "" {
-				ctx.Str("id", id)
+				evt.Str("id", id)
 			}
 
-			ctx.Str("remote_ip", c.RealIP())
-			ctx.Str("host", req.Host)
-			ctx.Str("method", req.Method)
-			ctx.Str("uri", req.RequestURI)
-			ctx.Str("user_agent", req.UserAgent())
-			ctx.Int("status", res.Status)
-			ctx.Str("referer", req.Referer())
+			evt.Str("remote_ip", c.RealIP())
+			evt.Str("host", req.Host)
+			evt.Str("method", req.Method)
+			evt.Str("uri", req.RequestURI)
+			evt.Str("user_agent", req.UserAgent())
+			evt.Int("status", res.Status)
+			evt.Str("referer", req.Referer())
 
 			if err != nil {
-				ctx.Err(err)
+				evt.Err(err)
 			}
 
-			ctx.Dur("latency", stop.Sub(start))
-			ctx.Str("latency_human", stop.Sub(start).String())
+			evt.Dur("latency", stop.Sub(start))
+			evt.Str("latency_human", stop.Sub(start).String())
 
 			cl := req.Header.Get(echo.HeaderContentLength)
 			if cl == "" {
 				cl = "0"
 			}
 
-			ctx.Str("bytes_in", cl)
-			ctx.Str("bytes_out", strconv.FormatInt(res.Size, 10))
-			ctx.Msg("")
+			evt.Str("bytes_in", cl)
+			evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
+			evt.Msg("")
 
 			return err
 		}
