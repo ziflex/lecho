@@ -10,8 +10,8 @@ import (
 type (
 	Options struct {
 		context zerolog.Context
-		level log.Lvl
-		prefix string
+		level   log.Lvl
+		prefix  string
 	}
 
 	Setter func(opts *Options)
@@ -20,8 +20,10 @@ type (
 func newOptions(out io.Writer, setters []Setter) *Options {
 	opts := &Options{
 		context: zerolog.New(out).With(),
-		level: log.INFO,
 	}
+
+	// Set default level
+	setters = append([]Setter{WithLevel(log.INFO)}, setters...)
 
 	for _, set := range setters {
 		set(opts)
