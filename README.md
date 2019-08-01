@@ -12,27 +12,83 @@ e.Logger = lecho.New(os.Stdout)
 ## Options
 
 ```go
-e := echo.New()
-l := lecho.New(
-     	os.Stdout,
-     	lecho.WithLevel(log.DEBUG),
-     	lecho.WithFields(map[string]interface{}{ "id": "foobar"}),
-     	lecho.WithTimestamp(),
-     	lecho.WithCaller(),
-     	lecho.WithPrefix("lecho lover"),
-     	lecho.WithHook(...),
-     	lecho.WithHookFunc(...),
-     )
-e.Logger = l
 
-e.Use(func(c echo.Context) error {
-    l := logger
-    id := c.Request().Header.Get(echo.HeaderXRequestID)
+import (
+	"os",
+	"github.com/labstack/echo"
+	"github.com/ziflex/lecho"
+)
 
-    if id != "" {
-        l = logger.Clone(lecho.WithField("id", id))
-    }
+type Context struct {
+	echo.Context
+	logger *lecho.Logger
+}
 
-    return next(NewContext(c, l))
-})
+func NewContext(c echo.Context, l *lecho.Logger) *Context {
+	return &Context{c, l}
+}
+
+func (c *Context) Logger() echo.Logger {
+	return c.logger
+}
+
+func main() {
+    e := echo.New()
+    e.Logger = lecho.New(
+       os.Stdout,
+       lecho.WithLevel(log.DEBUG),
+       lecho.WithFields(map[string]interface{}{ "name": "lecho factory"}),
+       lecho.WithTimestamp(),
+       lecho.WithCaller(),
+       lecho.WithPrefix("we ❤️ lecho"),
+       lecho.WithHook(...),
+       lecho.WithHookFunc(...),
+    )
+}
+```
+
+## Logger with Request ID
+
+```go
+
+import (
+	"os",
+	"github.com/labstack/echo"
+	"github.com/ziflex/lecho"
+)
+
+type Context struct {
+	echo.Context
+	logger *lecho.Logger
+}
+
+func NewContext(c echo.Context, l *lecho.Logger) *Context {
+	return &Context{c, l}
+}
+
+func (c *Context) Logger() echo.Logger {
+	return c.logger
+}
+
+func main() {
+    e := echo.New()
+    l := lecho.New(
+            os.Stdout,
+            lecho.WithLevel(log.DEBUG),
+            lecho.WithTimestamp(),
+            lecho.WithCaller(),
+         )
+    e.Logger = l
+    
+    e.Use(func(c echo.Context) error {
+        l := logger
+        id := c.Request().Header.Get(echo.HeaderXRequestID)
+    
+        if id != "" {
+            l = logger.Clone(lecho.WithField("id", id))
+        }
+    
+        return next(NewContext(c, l))
+    })	
+}
 ```
