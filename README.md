@@ -16,6 +16,7 @@ e.Logger = lecho.New(os.Stdout)
 import (
 	"os",
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/ziflex/lecho"
 )
 
@@ -72,22 +73,23 @@ func (c *Context) Logger() echo.Logger {
 
 func main() {
     e := echo.New()
-    l := lecho.New(
+    logger := lecho.New(
             os.Stdout,
             lecho.WithLevel(log.DEBUG),
             lecho.WithTimestamp(),
             lecho.WithCaller(),
          )
-    e.Logger = l
+    e.Logger = logger
     
+    e.Use(middleware.RequestID())
     e.Use(func(c echo.Context) error {
         l := logger
-        id := c.Request().Header.Get(echo.HeaderXRequestID)
-    
+        id := c.Response().Header().Get(echo.HeaderXRequestID)
+
         if id != "" {
             l = logger.Clone(lecho.WithField("id", id))
         }
-    
+
         return next(NewContext(c, l))
     })	
 }
