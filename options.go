@@ -18,9 +18,11 @@ type (
 )
 
 func newOptions(out io.Writer, setters []Setter) *Options {
+	elvl, _ := fromZeroLevel(zerolog.Level(0))
+
 	opts := &Options{
 		context: zerolog.New(out).With(),
-		level: log.OFF,
+		level: elvl,
 	}
 
 	for _, set := range setters {
@@ -32,10 +34,10 @@ func newOptions(out io.Writer, setters []Setter) *Options {
 
 func WithLevel(level log.Lvl) Setter {
 	return func(opts *Options) {
-		zlvl, lvl := getLevel(level)
+		zlvl, elvl := fromEchoLevel(level)
 
 		opts.context = opts.context.Logger().Level(zlvl).With()
-		opts.level = lvl
+		opts.level = elvl
 	}
 }
 

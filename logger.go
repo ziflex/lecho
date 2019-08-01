@@ -130,10 +130,10 @@ func (l Logger) Level() log.Lvl {
 }
 
 func (l *Logger) SetLevel(level log.Lvl) {
-	zlvl, lvl := getLevel(level)
+	zlvl, elvl := fromEchoLevel(level)
 
-	l.setters = append(l.setters, WithLevel(lvl))
-	l.level = lvl
+	l.setters = append(l.setters, WithLevel(elvl))
+	l.level = elvl
 	l.log = l.log.Level(zlvl)
 }
 
