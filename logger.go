@@ -9,16 +9,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var (
-	levels = map[log.Lvl]zerolog.Level{
-		log.DEBUG: zerolog.DebugLevel,
-		log.INFO:  zerolog.InfoLevel,
-		log.WARN:  zerolog.WarnLevel,
-		log.ERROR: zerolog.ErrorLevel,
-		log.OFF:   zerolog.NoLevel,
-	}
-)
-
 // Logger is a wrapper around `zerolog.Logger` that provides an implementation of `echo.Logger` interface
 type Logger struct {
 	echo.Logger
@@ -139,11 +129,12 @@ func (l Logger) Level() log.Lvl {
 	return l.level
 }
 
-func (l *Logger) SetLevel(newLevel log.Lvl) {
-	level := levels[newLevel]
-	l.setters = append(l.setters, WithLevel(newLevel))
-	l.level = newLevel
-	l.log = l.log.Level(level)
+func (l *Logger) SetLevel(level log.Lvl) {
+	zlvl, lvl := getLevel(level)
+
+	l.setters = append(l.setters, WithLevel(lvl))
+	l.level = lvl
+	l.log = l.log.Level(zlvl)
 }
 
 func (l Logger) Prefix() string {
