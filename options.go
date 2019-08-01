@@ -1,6 +1,8 @@
 package lecho
 
 import (
+	"io"
+
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 )
@@ -14,6 +16,19 @@ type (
 
 	Setter func(opts *Options)
 )
+
+func newOptions(out io.Writer, setters []Setter) *Options {
+	opts := &Options{
+		context: zerolog.New(out).With(),
+		level: log.INFO,
+	}
+
+	for _, set := range setters {
+		set(opts)
+	}
+
+	return opts
+}
 
 func WithLevel(level log.Lvl) Setter {
 	return func(opts *Options) {

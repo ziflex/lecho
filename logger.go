@@ -21,6 +21,7 @@ var (
 
 // Logger is a wrapper around `zerolog.Logger` that provides an implementation of `echo.Logger` interface
 type Logger struct {
+	echo.Logger
 	log     zerolog.Logger
 	out     io.Writer
 	level   log.Lvl
@@ -29,7 +30,7 @@ type Logger struct {
 }
 
 // New returns a new Logger instance
-func New(out io.Writer, setters ...Setter) echo.Logger {
+func New(out io.Writer, setters ...Setter) *Logger {
 	opts := newOptions(out, setters)
 
 	return &Logger{
@@ -39,21 +40,6 @@ func New(out io.Writer, setters ...Setter) echo.Logger {
 		prefix:  opts.prefix,
 		setters: setters,
 	}
-}
-
-func newOptions(out io.Writer, setters []Setter) *Options {
-	opts := &Options{
-		context: zerolog.New(out).With(),
-		level: log.INFO,
-	}
-
-	opts.context.Caller()
-
-	for _, set := range setters {
-		set(opts)
-	}
-
-	return opts
 }
 
 func (l Logger) Debug(i ...interface{}) {
@@ -177,7 +163,7 @@ func (l *Logger) SetPrefix(newPrefix string) {
 	l.log = opts.context.Logger()
 }
 
-func (l Logger) Clone(setters ...Setter) echo.Logger {
+func (l Logger) Clone(setters ...Setter) *Logger {
 	s := append(l.setters, setters...)
 
 	return New(l.out, s...)
