@@ -9,9 +9,24 @@ import (
 	"github.com/labstack/echo/middleware"
 )
 
-type Config struct {
-	Logger  *Logger
-	Skipper middleware.Skipper
+type (
+	Config struct {
+		Logger  *Logger
+		Skipper middleware.Skipper
+	}
+
+	Context struct {
+		echo.Context
+		logger *Logger
+	}
+)
+
+func NewContext(ctx echo.Context, logger *Logger) *Context {
+	return &Context{ctx, logger}
+}
+
+func (c *Context) Logger() echo.Logger {
+	return c.logger
 }
 
 func Middleware(config Config) echo.MiddlewareFunc {
@@ -34,24 +49,27 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			res := c.Response()
 			start := time.Now()
 
-			if err = next(c); err != nil {
-				c.Error(err)
-			}
-
-			stop := time.Now()
-
-			evt := config.Logger.log.Log()
-
 			id := req.Header.Get(echo.HeaderXRequestID)
 
 			if id == "" {
 				id = res.Header().Get(echo.HeaderXRequestID)
 			}
 
+			logger := config.Logger
+
 			if id != "" {
-				evt.Str("id", id)
+				logger = logger.Clone(WithField("id", id))
 			}
 
+			c = NewContext(c, logger)
+
+			if err = next(c); err != nil {
+				c.Error(err)
+			}
+
+			stop := time.Now()
+
+			evt := logger.log.Log()
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
 			evt.Str("method", req.Method)

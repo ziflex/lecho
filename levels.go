@@ -15,11 +15,11 @@ var (
 	}
 
 	zeroLevels = map[zerolog.Level]log.Lvl{
-		zerolog.DebugLevel : log.DEBUG,
-		zerolog.InfoLevel : log.INFO,
-		zerolog.WarnLevel: log.WARN,
-		zerolog.ErrorLevel : log.ERROR,
-		zerolog.NoLevel : log.OFF,
+		zerolog.DebugLevel: log.DEBUG,
+		zerolog.InfoLevel:  log.INFO,
+		zerolog.WarnLevel:  log.WARN,
+		zerolog.ErrorLevel: log.ERROR,
+		zerolog.NoLevel:    log.OFF,
 	}
 )
 

@@ -22,7 +22,7 @@ func newOptions(out io.Writer, setters []Setter) *Options {
 
 	opts := &Options{
 		context: zerolog.New(out).With(),
-		level: elvl,
+		level:   elvl,
 	}
 
 	for _, set := range setters {
