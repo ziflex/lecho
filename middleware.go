@@ -1,15 +1,34 @@
 package lecho
 
 import (
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
-func Middleware(logger *Logger) echo.MiddlewareFunc {
+type Config struct {
+	Logger *Logger
+	Skipper middleware.Skipper
+}
+
+func Middleware(config Config) echo.MiddlewareFunc {
+	if config.Skipper == nil {
+		config.Skipper = middleware.DefaultSkipper
+	}
+
+	if config.Logger == nil {
+		config.Logger = New(os.Stdout, WithTimestamp())
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if config.Skipper(c) {
+				return next(c)
+			}
+
 			var err error
 			req := c.Request()
 			res := c.Response()
@@ -55,7 +74,7 @@ func Middleware(logger *Logger) echo.MiddlewareFunc {
 			params["bytes_in"] = cl
 			params["bytes_out"] = strconv.FormatInt(res.Size, 10)
 
-			logger.Printj(params)
+			config.Logger.Printj(params)
 
 			return err
 		}
