@@ -20,19 +20,6 @@ import (
 	"github.com/ziflex/lecho"
 )
 
-type Context struct {
-	echo.Context
-	logger *lecho.Logger
-}
-
-func NewContext(c echo.Context, l *lecho.Logger) *Context {
-	return &Context{c, l}
-}
-
-func (c *Context) Logger() echo.Logger {
-	return c.logger
-}
-
 func main() {
     e := echo.New()
     e.Logger = lecho.New(
@@ -59,19 +46,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/ziflex/lecho"
 )
-
-type Context struct {
-	echo.Context
-	logger *lecho.Logger
-}
-
-func NewContext(c echo.Context, l *lecho.Logger) *Context {
-	return &Context{c, l}
-}
-
-func (c *Context) Logger() echo.Logger {
-	return c.logger
-}
 
 func main() {
     e := echo.New()
