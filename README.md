@@ -44,6 +44,7 @@ func main() {
 import (
 	"os",
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/ziflex/lecho"
 )
 
@@ -57,6 +58,7 @@ func main() {
          )
     e.Logger = logger
     
+    e.Use(middleware.RequestID())
     e.Use(lecho.Middleware(lecho.Config{
     	Logger: logger
     }))	
