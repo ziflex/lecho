@@ -37,7 +37,7 @@ func main() {
 
 ## Middleware
 
-### Logging request and attaching RequestID to a context logger 
+### Logging requests and attaching request id to a context logger 
 
 ```go
 
