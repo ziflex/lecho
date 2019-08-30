@@ -69,7 +69,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			stop := time.Now()
 
-			evt := logger.log.Log()
+			evt := logger.log.Info()
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
 			evt.Str("method", req.Method)

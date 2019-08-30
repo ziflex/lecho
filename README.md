@@ -20,19 +20,6 @@ import (
 	"github.com/ziflex/lecho"
 )
 
-type Context struct {
-	echo.Context
-	logger *lecho.Logger
-}
-
-func NewContext(c echo.Context, l *lecho.Logger) *Context {
-	return &Context{c, l}
-}
-
-func (c *Context) Logger() echo.Logger {
-	return c.logger
-}
-
 func main() {
     e := echo.New()
     e.Logger = lecho.New(
@@ -50,28 +37,16 @@ func main() {
 
 ## Middleware
 
-### Logging request and attaching RequestID to a context logger 
+### Logging requests and attaching request id to a context logger 
 
 ```go
 
 import (
 	"os",
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/ziflex/lecho"
 )
-
-type Context struct {
-	echo.Context
-	logger *lecho.Logger
-}
-
-func NewContext(c echo.Context, l *lecho.Logger) *Context {
-	return &Context{c, l}
-}
-
-func (c *Context) Logger() echo.Logger {
-	return c.logger
-}
 
 func main() {
     e := echo.New()
@@ -83,6 +58,7 @@ func main() {
          )
     e.Logger = logger
     
+    e.Use(middleware.RequestID())
     e.Use(lecho.Middleware(lecho.Config{
     	Logger: logger
     }))	
