@@ -2,6 +2,20 @@
 
 Zerolog wrapper for [Echo](https://echo.labstack.com/) web framework.
 
+## Installation
+
+For Echo v4:
+
+```
+go get github.com/ziflex/lecho/v2
+```
+
+For Echo v3:
+
+```
+go get github.com/ziflex/lecho
+```
+
 ## Quick start
 
 ```go
@@ -17,7 +31,7 @@ import (
 	"os",
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/ziflex/lecho"
+	"github.com/ziflex/lecho/v2"
 )
 
 func main() {
@@ -45,7 +59,7 @@ import (
 	"os",
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/ziflex/lecho"
+	"github.com/ziflex/lecho/v2"
 )
 
 func main() {
