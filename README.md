@@ -1,4 +1,4 @@
-# :tomato: lecho :tomato:
+# lecho :tomato:
 
 Zerolog wrapper for [Echo](https://echo.labstack.com/) web framework.
 
