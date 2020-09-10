@@ -146,7 +146,9 @@ func (l Logger) SetHeader(h string) {
 }
 
 func (l *Logger) SetPrefix(newPrefix string) {
-	setters := append(l.setters, WithPrefix(newPrefix))
+	setters := make([]Setter, 0, len(l.setters)+1)
+	setters = append(setters, WithPrefix(newPrefix))
+
 	opts := newOptions(l.out, setters)
 
 	l.setters = setters
