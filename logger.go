@@ -155,21 +155,23 @@ func (l Logger) SetHeader(h string) {
 }
 
 func (l *Logger) SetPrefix(newPrefix string) {
-	setters := append(l.setters, WithPrefix(newPrefix))
-	opts := newOptions(l.log, setters)
+	l.setters = append(l.setters, WithPrefix(newPrefix))
 
-	l.setters = setters
+	opts := newOptions(l.log, l.setters)
+
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
 }
 
-func (l Logger) Clone(setters ...Setter) *Logger {
-	s := append(l.setters, setters...)
+func (l *Logger) Clone(setters ...Setter) *Logger {
+	nextSetters := make([]Setter, 0, len(l.setters)+len(setters))
+	copy(nextSetters, l.setters)
+	nextSetters = append(nextSetters, setters...)
 
-	return newLogger(l.log, s)
+	return newLogger(l.log, nextSetters)
 }
 
-func (l Logger) logJSON(event *zerolog.Event, j log.JSON) {
+func (l *Logger) logJSON(event *zerolog.Event, j log.JSON) {
 	for k, v := range j {
 		event = event.Interface(k, v)
 	}
