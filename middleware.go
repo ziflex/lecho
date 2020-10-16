@@ -11,8 +11,9 @@ import (
 
 type (
 	Config struct {
-		Logger  *Logger
-		Skipper middleware.Skipper
+		Logger       *Logger
+		Skipper      middleware.Skipper
+		RequestIDKey string
 	}
 
 	Context struct {
@@ -38,6 +39,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 		config.Logger = New(os.Stdout, WithTimestamp())
 	}
 
+	if config.RequestIDKey == "" {
+		config.RequestIDKey = "id"
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
@@ -58,7 +63,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			logger := config.Logger
 
 			if id != "" {
-				logger = logger.Clone(WithField("id", id))
+				logger = From(logger.log, WithField(config.RequestIDKey, id))
 			}
 
 			c = NewContext(c, logger)

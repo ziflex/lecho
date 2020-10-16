@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 )
 
 // Logger is a wrapper around `zerolog.Logger` that provides an implementation of `echo.Logger` interface
 type Logger struct {
-	echo.Logger
 	log     zerolog.Logger
 	out     io.Writer
 	level   log.Lvl
@@ -21,11 +19,20 @@ type Logger struct {
 
 // New returns a new Logger instance
 func New(out io.Writer, setters ...Setter) *Logger {
-	opts := newOptions(out, setters)
+	return newLogger(zerolog.New(out), setters)
+}
+
+// New returns a new Logger instance using existing zerolog log.
+func From(log zerolog.Logger, setters ...Setter) *Logger {
+	return newLogger(log, setters)
+}
+
+func newLogger(log zerolog.Logger, setters []Setter) *Logger {
+	opts := newOptions(log, setters)
 
 	return &Logger{
-		out:     out,
 		log:     opts.context.Logger(),
+		out:     nil,
 		level:   opts.level,
 		prefix:  opts.prefix,
 		setters: setters,
@@ -117,7 +124,7 @@ func (l Logger) Printj(j log.JSON) {
 }
 
 func (l Logger) Output() io.Writer {
-	return l.out
+	return l.log
 }
 
 func (l *Logger) SetOutput(newOut io.Writer) {
@@ -146,23 +153,15 @@ func (l Logger) SetHeader(h string) {
 }
 
 func (l *Logger) SetPrefix(newPrefix string) {
-	setters := make([]Setter, 0, len(l.setters)+1)
-	setters = append(setters, WithPrefix(newPrefix))
+	l.setters = append(l.setters, WithPrefix(newPrefix))
 
-	opts := newOptions(l.out, setters)
+	opts := newOptions(l.log, l.setters)
 
-	l.setters = setters
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
 }
 
-func (l Logger) Clone(setters ...Setter) *Logger {
-	s := append(l.setters, setters...)
-
-	return New(l.out, s...)
-}
-
-func (l Logger) logJSON(event *zerolog.Event, j log.JSON) {
+func (l *Logger) logJSON(event *zerolog.Event, j log.JSON) {
 	for k, v := range j {
 		event = event.Interface(k, v)
 	}

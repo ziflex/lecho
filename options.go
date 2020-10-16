@@ -1,8 +1,6 @@
 package lecho
 
 import (
-	"io"
-
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 )
@@ -17,11 +15,11 @@ type (
 	Setter func(opts *Options)
 )
 
-func newOptions(out io.Writer, setters []Setter) *Options {
-	elvl, _ := fromZeroLevel(zerolog.Level(0))
+func newOptions(log zerolog.Logger, setters []Setter) *Options {
+	elvl, _ := fromZeroLevel(log.GetLevel())
 
 	opts := &Options{
-		context: zerolog.New(out).With(),
+		context: log.With(),
 		level:   elvl,
 	}
 
@@ -74,7 +72,6 @@ func WithCallerWithSkipFrameCount(skipFrameCount int) Setter {
 func WithPrefix(prefix string) Setter {
 	return func(opts *Options) {
 		opts.context = opts.context.Str("prefix", prefix)
-		opts.prefix = prefix
 	}
 }
 

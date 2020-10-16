@@ -27,6 +27,61 @@ func TestNew(t *testing.T) {
 	)
 }
 
+func TestFrom(t *testing.T) {
+	b := &bytes.Buffer{}
+
+	zl := zerolog.New(b)
+	l := lecho.From(zl.With().Str("key", "test").Logger())
+
+	l.Print("foo")
+
+	assert.Equal(
+		t,
+		`{"key":"test","level":"-","message":"foo"}
+`,
+		b.String(),
+	)
+}
+
+func TestLogger_SetPrefix(t *testing.T) {
+	//	b := &bytes.Buffer{}
+	//
+	//	l := lecho.New(b)
+	//
+	//	l.Print("t-e-s-t")
+	//
+	//	assert.Equal(
+	//		t,
+	//		`{"level":"-","message":"t-e-s-t"}
+	//`,
+	//		b.String(),
+	//	)
+	//
+	//	b.Reset()
+	//
+	//	l.SetPrefix("foo")
+	//	l.Print("test")
+	//
+	//	assert.Equal(
+	//		t,
+	//		`{"prefix":"foo","level":"-","message":"test"}
+	//`,
+	//		b.String(),
+	//	)
+	//
+	//	b.Reset()
+	//
+	//	l.SetPrefix("bar")
+	//	l.Print("test-test")
+	//
+	//	assert.Equal(
+	//		t,
+	//		`{"prefix":"bar","level":"-","message":"test-test"}
+	//`,
+	//		b.String(),
+	//	)
+}
+
 func TestLogger_Output(t *testing.T) {
 	out1 := &bytes.Buffer{}
 
@@ -77,52 +132,6 @@ func TestLogger_SetLevel(t *testing.T) {
 	l.Debug("foo")
 
 	assert.Equal(t, "", b.String())
-}
-
-func TestLogger_Clone(t *testing.T) {
-	b := &bytes.Buffer{}
-
-	l := lecho.New(b)
-
-	l.SetPrefix("L1")
-
-	l.Debug("foo")
-
-	assert.Equal(t, `{"level":"debug","prefix":"L1","message":"foo"}
-`, b.String())
-
-	b.Reset()
-
-	l2 := l.Clone()
-	l2.SetPrefix("L2")
-	l2.Debug("foo")
-
-	assert.Equal(t, `{"level":"debug","prefix":"L2","message":"foo"}
-`, b.String())
-}
-
-func TestLogger_Debugf(t *testing.T) {
-	b := &bytes.Buffer{}
-	l := lecho.New(b)
-
-	l.Debugf("Foo%s", "Bar")
-
-	assert.Equal(t, `{"level":"debug","message":"FooBar"}
-`,
-		b.String())
-}
-
-func TestLogger_Debugj(t *testing.T) {
-	b := &bytes.Buffer{}
-	l := lecho.New(b)
-
-	l.Debugj(log.JSON{
-		"message": "foobar",
-	})
-
-	assert.Equal(t, `{"level":"debug","message":"foobar"}
-`,
-		b.String())
 }
 
 func TestLogger(t *testing.T) {
