@@ -72,7 +72,6 @@ func WithCallerWithSkipFrameCount(skipFrameCount int) Setter {
 func WithPrefix(prefix string) Setter {
 	return func(opts *Options) {
 		opts.context = opts.context.Str("prefix", prefix)
-		opts.prefix = prefix
 	}
 }
 

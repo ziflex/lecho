@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 )
 
 // Logger is a wrapper around `zerolog.Logger` that provides an implementation of `echo.Logger` interface
 type Logger struct {
-	echo.Logger
 	log     zerolog.Logger
 	out     io.Writer
 	level   log.Lvl
@@ -161,14 +159,6 @@ func (l *Logger) SetPrefix(newPrefix string) {
 
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
-}
-
-func (l *Logger) Clone(setters ...Setter) *Logger {
-	nextSetters := make([]Setter, 0, len(l.setters)+len(setters))
-	copy(nextSetters, l.setters)
-	nextSetters = append(nextSetters, setters...)
-
-	return newLogger(l.log, nextSetters)
 }
 
 func (l *Logger) logJSON(event *zerolog.Event, j log.JSON) {
