@@ -19,7 +19,12 @@ type Logger struct {
 
 // New returns a new Logger instance
 func New(out io.Writer, setters ...Setter) *Logger {
-	return newLogger(zerolog.New(out), setters)
+	switch l := out.(type) {
+	case zerolog.Logger:
+		return newLogger(l, setters)
+	default:
+		return newLogger(zerolog.New(out), setters)
+	}
 }
 
 // New returns a new Logger instance using existing zerolog log.

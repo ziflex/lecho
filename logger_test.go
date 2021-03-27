@@ -27,6 +27,22 @@ func TestNew(t *testing.T) {
 	)
 }
 
+func TestNewWithZerolog(t *testing.T) {
+	b := &bytes.Buffer{}
+	zl := zerolog.New(b)
+
+	l := lecho.New(zl.With().Str("key", "test").Logger())
+
+	l.Print("foo")
+
+	assert.Equal(
+		t,
+		`{"key":"test","level":"-","message":"foo"}
+`,
+		b.String(),
+	)
+}
+
 func TestFrom(t *testing.T) {
 	b := &bytes.Buffer{}
 

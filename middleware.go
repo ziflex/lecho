@@ -97,7 +97,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			evt.Str("bytes_in", cl)
 			evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
-			evt.Msg("")
+			evt.Send()
 
 			return err
 		}
