@@ -27,7 +27,7 @@ func New(out io.Writer, setters ...Setter) *Logger {
 	}
 }
 
-// New returns a new Logger instance using existing zerolog log.
+// From returns a new Logger instance using existing zerolog log.
 func From(log zerolog.Logger, setters ...Setter) *Logger {
 	return newLogger(log, setters)
 }
@@ -164,6 +164,10 @@ func (l *Logger) SetPrefix(newPrefix string) {
 
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
+}
+
+func (l *Logger) Unwrap() zerolog.Logger {
+	return l.log
 }
 
 func (l *Logger) logJSON(event *zerolog.Event, j log.JSON) {

@@ -1,6 +1,7 @@
 package lecho
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"time"
@@ -65,6 +66,15 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			if id != "" {
 				logger = From(logger.log, WithField(config.RequestIDKey, id))
 			}
+
+			ctx := req.Context()
+
+			if ctx == nil {
+				ctx = context.Background()
+			}
+
+			// Pass logger down to request context
+			c.SetRequest(req.WithContext(logger.WithContext(ctx)))
 
 			c = NewContext(c, logger)
 
