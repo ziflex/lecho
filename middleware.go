@@ -89,7 +89,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			if err != nil {
 				evt = logger.log.Err(err)
 			} else {
-				evt = logger.log.Info()
+				evt = logger.log.WithLevel(logger.log.GetLevel())
 			}
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
