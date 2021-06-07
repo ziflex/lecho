@@ -2,6 +2,7 @@ package lecho
 
 import (
 	"context"
+	"github.com/rs/zerolog"
 	"os"
 	"strconv"
 	"time"
@@ -84,7 +85,12 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			stop := time.Now()
 
-			evt := logger.log.Info()
+			var evt *zerolog.Event
+			if err != nil {
+				evt = logger.log.Err(err)
+			} else {
+				evt = logger.log.WithLevel(logger.log.GetLevel())
+			}
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
 			evt.Str("method", req.Method)
@@ -92,11 +98,6 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			evt.Str("user_agent", req.UserAgent())
 			evt.Int("status", res.Status)
 			evt.Str("referer", req.Referer())
-
-			if err != nil {
-				evt.Err(err)
-			}
-
 			evt.Dur("latency", stop.Sub(start))
 			evt.Str("latency_human", stop.Sub(start).String())
 
