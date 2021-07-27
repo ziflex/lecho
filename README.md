@@ -110,3 +110,32 @@ func main() {
     }))	
 }
 ```
+
+## Helpers
+
+### Level converters
+
+```go
+
+import (
+    "fmt",
+    "github.com/labstack/echo"
+    "github.com/labstack/echo/middleware"
+    "github.com/labstack/gommon/log"
+    "github.com/ziflex/lecho/v2"
+)
+
+func main() {
+	var z zerolog.Level
+	var e log.Lvl
+	
+    z, e = lecho.MatchEchoLevel(log.WARN)
+    
+    fmt.Println(z, e)
+    
+    e, z = lecho.MatchZeroLevel(zerolog.INFO)
+
+    fmt.Println(z, e)
+}
+
+```
