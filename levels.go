@@ -23,7 +23,7 @@ var (
 	}
 )
 
-func fromEchoLevel(level log.Lvl) (zerolog.Level, log.Lvl) {
+func MatchEchoLevel(level log.Lvl) (zerolog.Level, log.Lvl) {
 	zlvl, found := echoLevels[level]
 
 	if found {
@@ -33,7 +33,7 @@ func fromEchoLevel(level log.Lvl) (zerolog.Level, log.Lvl) {
 	return zerolog.NoLevel, log.OFF
 }
 
-func fromZeroLevel(level zerolog.Level) (log.Lvl, zerolog.Level) {
+func MatchZeroLevel(level zerolog.Level) (log.Lvl, zerolog.Level) {
 	elvl, found := zeroLevels[level]
 
 	if found {
