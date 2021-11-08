@@ -1,6 +1,6 @@
 # lecho :tomato:
 
-Zerolog wrapper for [Echo](https://echo.labstack.com/) web framework.
+[Zerolog](https://github.com/rs/zerolog) wrapper for [Echo](https://echo.labstack.com/) web framework.
 
 ## Installation
 
@@ -25,7 +25,7 @@ import (
 	"os"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/ziflex/lecho/v2"
+	"github.com/ziflex/lecho/v3"
 )
 
 func main() {
@@ -43,8 +43,8 @@ import (
 	"os"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/ziflex/lecho/v2"
-    "github.com/rs/zerolog"
+	"github.com/ziflex/lecho/v3"
+        "github.com/rs/zerolog"
 )
 
 func main() {
@@ -63,7 +63,7 @@ import (
 	"os",
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/ziflex/lecho/v2"
+	"github.com/ziflex/lecho/v3"
 )
 
 func main() {
@@ -91,7 +91,8 @@ import (
 	"os",
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/ziflex/lecho/v2"
+	"github.com/ziflex/lecho/v3"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -108,6 +109,12 @@ func main() {
     e.Use(lecho.Middleware(lecho.Config{
     	Logger: logger
     }))	
+    e.GET("/", func(c echo.Context) error {
+        c.Logger().Print("Echo interface")
+        zerolog.Ctx(c.Request().Context()).Print("Zerolog interface")
+	
+	return c.String(http.StatusOK, "Hello, World!")
+    })
 }
 ```
 
@@ -122,7 +129,7 @@ import (
     "github.com/labstack/echo"
     "github.com/labstack/echo/middleware"
     "github.com/labstack/gommon/log"
-    "github.com/ziflex/lecho/v2"
+    "github.com/ziflex/lecho/v3"
 )
 
 func main() {
