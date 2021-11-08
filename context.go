@@ -1,17 +1,15 @@
 package lecho
 
-import "context"
-
-type ctxKey struct{}
+import (
+	"context"
+	"github.com/rs/zerolog"
+)
 
 func (l *Logger) WithContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, ctxKey{}, l)
+	zerologger := l.Unwrap()
+	return zerologger.WithContext(ctx)
 }
 
-func Ctx(ctx context.Context) *Logger {
-	if l, ok := ctx.Value(ctxKey{}).(*Logger); ok {
-		return l
-	}
-
-	return nil
+func Ctx(ctx context.Context) *zerolog.Logger {
+	return zerolog.Ctx(ctx)
 }

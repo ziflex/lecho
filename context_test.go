@@ -12,7 +12,8 @@ import (
 func TestCtx(t *testing.T) {
 	b := &bytes.Buffer{}
 	l := lecho.New(b)
+	zerologger := l.Unwrap()
 	ctx := l.WithContext(context.Background())
 
-	assert.Equal(t, lecho.Ctx(ctx), l)
+	assert.Equal(t, lecho.Ctx(ctx), &zerologger)
 }
