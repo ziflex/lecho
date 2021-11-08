@@ -7,7 +7,7 @@ Zerolog wrapper for [Echo](https://echo.labstack.com/) web framework.
 For Echo v4:
 
 ```
-go get github.com/ziflex/lecho/v2
+go get github.com/ziflex/lecho/v3
 ```
 
 For Echo v3:
