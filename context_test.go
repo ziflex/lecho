@@ -3,10 +3,11 @@ package lecho_test
 import (
 	"bytes"
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/ziflex/lecho/v2"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/ziflex/lecho/v3"
 )
 
 func TestCtx(t *testing.T) {

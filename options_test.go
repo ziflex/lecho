@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
-	"github.com/ziflex/lecho/v2"
+	"github.com/ziflex/lecho/v3"
 	"path/filepath"
 	"strings"
 	"testing"
