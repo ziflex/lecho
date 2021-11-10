@@ -118,6 +118,16 @@ func main() {
 }
 ```
 
+### Nesting under a sub dictionary
+
+```go
+e.Use(lecho.Middleware(lecho.Config{
+        Logger: logger,
+        NestKey: "request"
+    }))
+    // Output: {"level":"info","request":{"remote_ip":"5.6.7.8","method":"GET", ...}, ...}
+```
+
 ## Helpers
 
 ### Level converters
