@@ -2,10 +2,11 @@ package lecho
 
 import (
 	"context"
-	"github.com/rs/zerolog"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -16,6 +17,7 @@ type (
 		Logger       *Logger
 		Skipper      middleware.Skipper
 		RequestIDKey string
+		NestKey      string
 	}
 
 	Context struct {
@@ -85,11 +87,18 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			stop := time.Now()
 
-			var evt *zerolog.Event
+			var mainEvt *zerolog.Event
 			if err != nil {
-				evt = logger.log.Err(err)
+				mainEvt = logger.log.Err(err)
 			} else {
-				evt = logger.log.WithLevel(logger.log.GetLevel())
+				mainEvt = logger.log.WithLevel(logger.log.GetLevel())
+			}
+
+			var evt *zerolog.Event
+			if config.NestKey != "" { // Start a new event (dict) if there's a nest key.
+				evt = zerolog.Dict()
+			} else {
+				evt = mainEvt
 			}
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
@@ -108,7 +117,11 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			evt.Str("bytes_in", cl)
 			evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
-			evt.Send()
+
+			if config.NestKey != "" { // Nest the new event (dict) under the nest key.
+				mainEvt.Dict(config.NestKey, evt)
+			}
+			mainEvt.Send()
 
 			return err
 		}
