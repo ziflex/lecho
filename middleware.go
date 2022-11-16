@@ -73,16 +73,19 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				id = res.Header().Get(config.RequestIDHeader)
 			}
 
+			cloned := false
 			logger := config.Logger
 
 			if id != "" {
 				logger = From(logger.log, WithField(config.RequestIDKey, id))
+				cloned = true
 			}
 
 			if config.Enricher != nil {
 				// to avoid mutation of shared instance
-				if logger == config.Logger {
+				if !cloned {
 					logger = From(logger.log)
+					cloned = true
 				}
 
 				logger.log = config.Enricher(c, logger.log.With()).Logger()
