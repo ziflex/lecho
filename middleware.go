@@ -16,10 +16,14 @@ type (
 	Config struct {
 		Logger          *Logger
 		Skipper         middleware.Skipper
+		BeforeNext      middleware.BeforeFunc
+		Enricher        Enricher
 		RequestIDHeader string
 		RequestIDKey    string
 		NestKey         string
 	}
+
+	Enricher func(c echo.Context, logger zerolog.Context) zerolog.Context
 
 	Context struct {
 		echo.Context
@@ -75,6 +79,15 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				logger = From(logger.log, WithField(config.RequestIDKey, id))
 			}
 
+			if config.Enricher != nil {
+				// to avoid mutation of shared instance
+				if logger == config.Logger {
+					logger = From(logger.log)
+				}
+
+				logger.log = config.Enricher(c, logger.log.With()).Logger()
+			}
+
 			ctx := req.Context()
 
 			if ctx == nil {
@@ -83,8 +96,11 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			// Pass logger down to request context
 			c.SetRequest(req.WithContext(logger.WithContext(ctx)))
-
 			c = NewContext(c, logger)
+
+			if config.BeforeNext != nil {
+				config.BeforeNext(c)
+			}
 
 			if err = next(c); err != nil {
 				c.Error(err)
@@ -105,6 +121,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			} else {
 				evt = mainEvt
 			}
+
 			evt.Str("remote_ip", c.RealIP())
 			evt.Str("host", req.Host)
 			evt.Str("method", req.Method)
