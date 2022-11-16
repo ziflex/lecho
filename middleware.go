@@ -14,10 +14,11 @@ import (
 
 type (
 	Config struct {
-		Logger       *Logger
-		Skipper      middleware.Skipper
-		RequestIDKey string
-		NestKey      string
+		Logger          *Logger
+		Skipper         middleware.Skipper
+		RequestIDHeader string
+		RequestIDKey    string
+		NestKey         string
 	}
 
 	Context struct {
@@ -47,6 +48,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 		config.RequestIDKey = "id"
 	}
 
+	if config.RequestIDHeader == "" {
+		config.RequestIDHeader = echo.HeaderXRequestID
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if config.Skipper(c) {
@@ -58,10 +63,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			res := c.Response()
 			start := time.Now()
 
-			id := req.Header.Get(echo.HeaderXRequestID)
+			id := req.Header.Get(config.RequestIDHeader)
 
 			if id == "" {
-				id = res.Header().Get(echo.HeaderXRequestID)
+				id = res.Header().Get(config.RequestIDHeader)
 			}
 
 			logger := config.Logger
