@@ -3,14 +3,15 @@ package lecho_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/labstack/gommon/log"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
-	"github.com/ziflex/lecho/v3"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labstack/gommon/log"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
+	"github.com/ziflex/lecho/v3"
 )
 
 func TestWithCaller(t *testing.T) {

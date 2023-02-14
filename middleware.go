@@ -13,24 +13,35 @@ import (
 )
 
 type (
+	// Config is the configuration for the middleware.
 	Config struct {
-		Logger          *Logger
-		Skipper         middleware.Skipper
-		BeforeNext      middleware.BeforeFunc
-		Enricher        Enricher
+		// Logger is a custom instance of the logger to use.
+		Logger *Logger
+		// Skipper defines a function to skip middleware.
+		Skipper middleware.Skipper
+		// BeforeNext is a function that is executed before the next handler is called.
+		BeforeNext middleware.BeforeFunc
+		// Enricher is a function that can be used to enrich the logger with additional information.
+		Enricher Enricher
+		// RequestIDHeader is the header name to use for the request ID in a log record.
 		RequestIDHeader string
-		RequestIDKey    string
-		NestKey         string
+		// RequestIDKey is the key name to use for the request ID in a log record.
+		RequestIDKey string
+		// NestKey is the key name to use for the nested logger in a log record.
+		NestKey string
 	}
 
+	// Enricher is a function that can be used to enrich the logger with additional information.
 	Enricher func(c echo.Context, logger zerolog.Context) zerolog.Context
 
+	// Context is a wrapper around echo.Context that provides a logger.
 	Context struct {
 		echo.Context
 		logger *Logger
 	}
 )
 
+// NewContext returns a new Context.
 func NewContext(ctx echo.Context, logger *Logger) *Context {
 	return &Context{ctx, logger}
 }
@@ -39,6 +50,7 @@ func (c *Context) Logger() echo.Logger {
 	return c.logger
 }
 
+// Middleware returns a middleware which logs HTTP requests.
 func Middleware(config Config) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = middleware.DefaultSkipper
@@ -105,10 +117,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				config.BeforeNext(c)
 			}
 
-			if err = next(c); err != nil {
-				c.Error(err)
-			}
-
+			err = next(c)
 			stop := time.Now()
 
 			var mainEvt *zerolog.Event
