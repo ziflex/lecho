@@ -24,6 +24,7 @@ var (
 	}
 )
 
+// MatchEchoLevel returns a zerolog level and echo level for a given echo level
 func MatchEchoLevel(level log.Lvl) (zerolog.Level, log.Lvl) {
 	zlvl, found := echoLevels[level]
 
@@ -34,6 +35,7 @@ func MatchEchoLevel(level log.Lvl) (zerolog.Level, log.Lvl) {
 	return zerolog.NoLevel, log.OFF
 }
 
+// MatchZeroLevel returns an echo level and zerolog level for a given zerolog level
 func MatchZeroLevel(level zerolog.Level) (log.Lvl, zerolog.Level) {
 	elvl, found := zeroLevels[level]
 

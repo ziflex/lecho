@@ -128,6 +128,20 @@ e.Use(lecho.Middleware(lecho.Config{
     // Output: {"level":"info","request":{"remote_ip":"5.6.7.8","method":"GET", ...}, ...}
 ```
 
+### Enricher
+
+Enricher allows you to add additional fields to the log entry.
+
+```go
+e.Use(lecho.Middleware(lecho.Config{
+        Logger: logger,
+        Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+            return e.Str("user_id", c.Get("user_id"))
+        },
+    }))
+    // Output: {"level":"info","user_id":"123", ...}
+```
+
 ## Helpers
 
 ### Level converters
