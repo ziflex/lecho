@@ -29,6 +29,8 @@ type (
 		RequestIDKey string
 		// NestKey is the key name to use for the nested logger in a log record.
 		NestKey string
+		// HandleError indicates whether to propagate errors up the middleware chain, so the global error handler can decide appropriate status code.
+		HandleError bool
 	}
 
 	// Enricher is a function that can be used to enrich the logger with additional information.
@@ -117,7 +119,12 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				config.BeforeNext(c)
 			}
 
-			err = next(c)
+			if err = next(c); err != nil {
+				if config.HandleError {
+					c.Error(err)
+				}
+			}
+
 			stop := time.Now()
 
 			var mainEvt *zerolog.Event
