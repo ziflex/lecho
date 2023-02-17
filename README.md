@@ -142,6 +142,17 @@ e.Use(lecho.Middleware(lecho.Config{
     // Output: {"level":"info","user_id":"123", ...}
 ```
 
+### Errors
+Since lecho v3.4.0, the middleware does not automatically propagate errors up the chain. 
+If you want to do that, you can set `HandleError` to ``true``.
+
+```go
+e.Use(lecho.Middleware(lecho.Config{
+    Logger: logger,
+    HandleError: true,
+}))
+```
+
 ## Helpers
 
 ### Level converters
