@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/ziflex/lecho/v3"
 )
 
@@ -96,5 +97,59 @@ func TestMiddleware(t *testing.T) {
 
 		str := b.String()
 		assert.Contains(t, str, `"test":"test"`)
+	})
+
+	t.Run("should write multiple request id headers", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("Req-ID", "test_req_id")
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+
+		l := lecho.New(b)
+		m := lecho.Middleware(lecho.Config{
+			RequestIDHeaders: []string{"Req-ID", "X-Req-ID"},
+			Logger:           l,
+		})
+
+		next := func(c echo.Context) error {
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Contains(t, str, `test_req_id`)
+	})
+
+	t.Run("should not panic if config multiple request id headers not set", func(t *testing.T) {
+		assert.NotPanics(t, func() {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			b := &bytes.Buffer{}
+
+			l := lecho.New(b)
+			m := lecho.Middleware(lecho.Config{
+				Logger: l,
+			})
+
+			next := func(c echo.Context) error {
+				return nil
+			}
+
+			handler := m(next)
+			err := handler(c)
+
+			assert.NoError(t, err, "should not return error")
+		})
 	})
 }
