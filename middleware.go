@@ -23,8 +23,8 @@ type (
 		BeforeNext middleware.BeforeFunc
 		// Enricher is a function that can be used to enrich the logger with additional information.
 		Enricher Enricher
-		// RequestIDHeader is the header name to use for the request ID in a log record.
-		RequestIDHeader string
+		// RequestIDHeaders are headers name to use for the request ID in a log record.
+		RequestIDHeaders []string
 		// RequestIDKey is the key name to use for the request ID in a log record.
 		RequestIDKey string
 		// NestKey is the key name to use for the nested logger in a log record.
@@ -66,8 +66,12 @@ func Middleware(config Config) echo.MiddlewareFunc {
 		config.RequestIDKey = "id"
 	}
 
-	if config.RequestIDHeader == "" {
-		config.RequestIDHeader = echo.HeaderXRequestID
+	if config.RequestIDHeaders == nil {
+		config.RequestIDHeaders = make([]string, 0)
+	}
+
+	if len(config.RequestIDHeaders) == 0 {
+		config.RequestIDHeaders = append(config.RequestIDHeaders, echo.HeaderXRequestID)
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -81,10 +85,22 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			res := c.Response()
 			start := time.Now()
 
-			id := req.Header.Get(config.RequestIDHeader)
+			var id string
 
+			for _, header := range config.RequestIDHeaders {
+				id = req.Header.Get(header)
+				if id != "" {
+					break // we found request id
+				}
+			}
+			// if not found in request lets search response
 			if id == "" {
-				id = res.Header().Get(config.RequestIDHeader)
+				for _, header := range config.RequestIDHeaders {
+					id = res.Header().Get(header)
+					if id != "" {
+						break // we found request id
+					}
+				}
 			}
 
 			cloned := false
