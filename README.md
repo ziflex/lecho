@@ -116,7 +116,18 @@ func main() {
 	return c.String(http.StatusOK, "Hello, World!")
     })
 }
+
 ```
+
+### Escalate log level for slow requests:
+```go
+e.Use(lecho.Middleware(lecho.Config{
+    Logger: logger,
+    RequestLatencyLevel: zerolog.WarnLevel,
+    RequestLatencyLimit: 500 * time.Millisecond,
+}))
+```
+
 
 ### Nesting under a sub dictionary
 
