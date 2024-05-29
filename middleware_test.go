@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/ziflex/lecho/v3"
 )
 
@@ -160,5 +161,65 @@ func TestMiddleware(t *testing.T) {
 		str := b.String()
 		assert.Contains(t, str, `"level":"info"`)
 		assert.NotContains(t, str, `"level":"warn"`)
+	})
+
+	t.Run("should skip middleware before calling next handler when Skipper func returns true", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/skip", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+		l.SetLevel(log.INFO)
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			Skipper: func(c echo.Context) bool {
+				return c.Request().URL.Path == "/skip"
+			},
+		})
+
+		next := func(c echo.Context) error {
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Empty(t, str, "should not log anything")
+	})
+
+	t.Run("should skip middleware after calling next handler when AfterNextSkipper func returns true", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+		l.SetLevel(log.INFO)
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			AfterNextSkipper: func(c echo.Context) bool {
+				return c.Response().Status == http.StatusMovedPermanently
+			},
+		})
+
+		next := func(c echo.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, "/other")
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Empty(t, str, "should not log anything")
 	})
 }

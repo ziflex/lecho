@@ -19,6 +19,8 @@ type (
 		Logger *Logger
 		// Skipper defines a function to skip middleware.
 		Skipper middleware.Skipper
+		// AfterNextSkipper defines a function to skip middleware after the next handler is called.
+		AfterNextSkipper middleware.Skipper
 		// BeforeNext is a function that is executed before the next handler is called.
 		BeforeNext middleware.BeforeFunc
 		// Enricher is a function that can be used to enrich the logger with additional information.
@@ -60,6 +62,10 @@ func (c *Context) Logger() echo.Logger {
 func Middleware(config Config) echo.MiddlewareFunc {
 	if config.Skipper == nil {
 		config.Skipper = middleware.DefaultSkipper
+	}
+
+	if config.AfterNextSkipper == nil {
+		config.AfterNextSkipper = middleware.DefaultSkipper
 	}
 
 	if config.Logger == nil {
@@ -127,6 +133,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				if config.HandleError {
 					c.Error(err)
 				}
+			}
+
+			if config.AfterNextSkipper(c) {
+				return err
 			}
 
 			stop := time.Now()
