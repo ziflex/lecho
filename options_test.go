@@ -213,48 +213,48 @@ func TestGlobalLevel(t *testing.T) {
 	// Save original global level
 	originalLevel := zerolog.GlobalLevel()
 	defer zerolog.SetGlobalLevel(originalLevel)
-	
+
 	t.Run("should respect GlobalLevel when creating logger from existing zerolog", func(t *testing.T) {
 		// Set global level to WARN
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-		
+
 		b := &bytes.Buffer{}
 		// Create a zerolog with default TraceLevel
 		zl := zerolog.New(b)
-		
+
 		// Create lecho logger from existing zerolog
 		l := lecho.From(zl)
-		
+
 		// The effective level should be WARN (from GlobalLevel), not DEBUG (from TraceLevel)
 		assert.Equal(t, log.WARN, l.Level())
-		
+
 		// Debug should not log anything
 		l.Debug("debug message")
 		assert.Equal(t, "", b.String())
-		
+
 		// Warn should log
 		l.Warn("warn message")
 		assert.Contains(t, b.String(), "warn message")
 	})
-	
+
 	t.Run("should use logger level when GlobalLevel is lower", func(t *testing.T) {
 		// Set global level to DEBUG
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		
+
 		b := &bytes.Buffer{}
 		// Create a zerolog with ErrorLevel (higher than global)
 		zl := zerolog.New(b).Level(zerolog.ErrorLevel)
-		
+
 		// Create lecho logger from existing zerolog
 		l := lecho.From(zl)
-		
+
 		// The effective level should be ERROR (from logger), not DEBUG (from GlobalLevel)
 		assert.Equal(t, log.ERROR, l.Level())
-		
+
 		// Warn should not log anything
 		l.Warn("warn message")
 		assert.Equal(t, "", b.String())
-		
+
 		// Error should log
 		l.Error("error message")
 		assert.Contains(t, b.String(), "error message")
