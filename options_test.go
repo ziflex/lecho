@@ -178,6 +178,39 @@ func TestWithLevel(t *testing.T) {
 `)
 }
 
+func TestWithDefaultPrintLevel(t *testing.T) {
+	b := &bytes.Buffer{}
+	l := lecho.New(b, lecho.WithDefaultPrintLevel(log.INFO))
+
+	l.Print("Test message")
+
+	assert.Equal(t, b.String(), `{"level":"info","message":"Test message"}
+`)
+
+	b.Reset()
+	l.Printf("Formatted %s", "message")
+
+	assert.Equal(t, b.String(), `{"level":"info","message":"Formatted message"}
+`)
+
+	b.Reset()
+	l.Printj(log.JSON{"message": "JSON message"})
+
+	assert.Equal(t, b.String(), `{"level":"info","message":"JSON message"}
+`)
+}
+
+func TestWithDefaultPrintLevel_BackwardCompatibility(t *testing.T) {
+	// Test that without WithDefaultPrintLevel, behavior remains the same
+	b := &bytes.Buffer{}
+	l := lecho.New(b)
+
+	l.Print("Test message")
+
+	assert.Equal(t, b.String(), `{"level":"-","message":"Test message"}
+`)
+}
+
 func TestWithPrefix(t *testing.T) {
 	b := &bytes.Buffer{}
 	l := lecho.New(b, lecho.WithPrefix("Test"))

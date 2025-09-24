@@ -7,9 +7,10 @@ import (
 
 type (
 	Options struct {
-		context zerolog.Context
-		level   log.Lvl
-		prefix  string
+		context          zerolog.Context
+		level            log.Lvl
+		prefix           string
+		defaultPrintLevel *log.Lvl
 	}
 
 	Setter func(opts *Options)
@@ -84,5 +85,11 @@ func WithHook(hook zerolog.Hook) Setter {
 func WithHookFunc(hook zerolog.HookFunc) Setter {
 	return func(opts *Options) {
 		opts.context = opts.context.Logger().Hook(hook).With()
+	}
+}
+
+func WithDefaultPrintLevel(level log.Lvl) Setter {
+	return func(opts *Options) {
+		opts.defaultPrintLevel = &level
 	}
 }

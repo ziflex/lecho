@@ -10,11 +10,12 @@ import (
 
 // Logger is a wrapper around `zerolog.Logger` that provides an implementation of `echo.Logger` interface
 type Logger struct {
-	log     zerolog.Logger
-	out     io.Writer
-	level   log.Lvl
-	prefix  string
-	setters []Setter
+	log               zerolog.Logger
+	out               io.Writer
+	level             log.Lvl
+	prefix            string
+	setters           []Setter
+	defaultPrintLevel *log.Lvl
 }
 
 // New returns a new Logger instance
@@ -36,11 +37,12 @@ func newLogger(log zerolog.Logger, setters []Setter) *Logger {
 	opts := newOptions(log, setters)
 
 	return &Logger{
-		log:     opts.context.Logger(),
-		out:     nil,
-		level:   opts.level,
-		prefix:  opts.prefix,
-		setters: setters,
+		log:               opts.context.Logger(),
+		out:               nil,
+		level:             opts.level,
+		prefix:            opts.prefix,
+		setters:           setters,
+		defaultPrintLevel: opts.defaultPrintLevel,
 	}
 }
 
@@ -117,15 +119,15 @@ func (l Logger) Panicj(j log.JSON) {
 }
 
 func (l Logger) Print(i ...interface{}) {
-	l.log.WithLevel(zerolog.NoLevel).Str("level", "-").Msg(fmt.Sprint(i...))
+	l.printEvent().Msg(fmt.Sprint(i...))
 }
 
 func (l Logger) Printf(format string, i ...interface{}) {
-	l.log.WithLevel(zerolog.NoLevel).Str("level", "-").Msgf(format, i...)
+	l.printEvent().Msgf(format, i...)
 }
 
 func (l Logger) Printj(j log.JSON) {
-	l.logJSON(l.log.WithLevel(zerolog.NoLevel).Str("level", "-"), j)
+	l.logJSON(l.printEvent(), j)
 }
 
 func (l Logger) Output() io.Writer {
@@ -164,10 +166,21 @@ func (l *Logger) SetPrefix(newPrefix string) {
 
 	l.prefix = newPrefix
 	l.log = opts.context.Logger()
+	l.defaultPrintLevel = opts.defaultPrintLevel
 }
 
 func (l *Logger) Unwrap() zerolog.Logger {
 	return l.log
+}
+
+// printEvent returns an appropriate zerolog.Event for Print methods
+func (l Logger) printEvent() *zerolog.Event {
+	if l.defaultPrintLevel != nil {
+		zlvl, _ := MatchEchoLevel(*l.defaultPrintLevel)
+		return l.log.WithLevel(zlvl)
+	}
+	// Backward compatible behavior: use NoLevel with level field set to "-"
+	return l.log.WithLevel(zerolog.NoLevel).Str("level", "-")
 }
 
 func (l *Logger) logJSON(event *zerolog.Event, j log.JSON) {
