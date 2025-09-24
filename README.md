@@ -107,6 +107,7 @@ func main() {
 		lecho.WithTimestamp(),                                         // Add timestamp to logs
 		lecho.WithCaller(),                                           // Add caller information
 		lecho.WithPrefix("MyApp"),                                    // Add a prefix to logs
+		lecho.WithDefaultPrintLevel(log.INFO),                        // Set default level for Echo's Print methods
 		// lecho.WithHook(myHook),                                    // Add custom hooks
 		// lecho.WithHookFunc(myHookFunc),                            // Add hook functions
 	)
@@ -126,6 +127,47 @@ func main() {
 - **`WithPrefix(prefix string)`** - Add a prefix field to all log entries
 - **`WithHook(hook zerolog.Hook)`** - Add a custom zerolog hook
 - **`WithHookFunc(hookFunc zerolog.HookFunc)`** - Add a custom hook function
+- **`WithDefaultPrintLevel(level log.Lvl)`** - Set default level for Print/Printf methods (replaces "???" with actual level)
+
+### Default Print Level Configuration
+
+When Echo framework uses its internal logging methods (like for server startup messages), it calls the `Print` and `Printf` methods without specifying a log level. By default, this results in logs with a level of `"-"` which may appear as `"???"` in some log viewers.
+
+You can configure a default level for these methods using `WithDefaultPrintLevel`:
+
+```go
+package main
+
+import (
+	"os"
+	"github.com/labstack/echo/v4" 
+	"github.com/labstack/gommon/log"
+	"github.com/ziflex/lecho/v3"
+)
+
+func main() {
+	e := echo.New()
+	
+	// Configure logger with default print level
+	e.Logger = lecho.New(
+		os.Stdout,
+		lecho.WithTimestamp(),
+		lecho.WithDefaultPrintLevel(log.INFO), // Echo's Print methods will use INFO level
+	)
+	
+	e.Start(":8080") // This message will now show as INFO level instead of "???"
+}
+```
+
+**Before (without WithDefaultPrintLevel):**
+```
+2024-11-24T18:36:10Z ??? ⇨ http server started on [::]:9151
+```
+
+**After (with WithDefaultPrintLevel(log.INFO)):**
+```
+2024-11-24T18:36:10Z INF ⇨ http server started on [::]:9151
+```
 
 ## Middleware
 
