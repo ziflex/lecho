@@ -45,3 +45,16 @@ func MatchZeroLevel(level zerolog.Level) (log.Lvl, zerolog.Level) {
 
 	return log.OFF, zerolog.NoLevel
 }
+
+// GetEffectiveZerologLevel returns the effective level for a zerolog logger,
+// considering both the logger's level and the global level
+func GetEffectiveZerologLevel(logger zerolog.Logger) zerolog.Level {
+	loggerLevel := logger.GetLevel()
+	globalLevel := zerolog.GlobalLevel()
+
+	// The effective level is the maximum (most restrictive) of the two
+	if loggerLevel > globalLevel {
+		return loggerLevel
+	}
+	return globalLevel
+}
