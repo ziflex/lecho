@@ -101,6 +101,46 @@ func TestMiddleware(t *testing.T) {
 		assert.Contains(t, str, `"test":"test"`)
 	})
 
+	t.Run("should use after next enricher", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+
+		order := make([]string, 0, 2)
+		var nextCalled bool
+
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				assert.True(t, nextCalled, "after next enricher should run after next")
+				order = append(order, "after")
+
+				return logger.Str("after", "yes")
+			},
+		})
+
+		next := func(c echo.Context) error {
+			nextCalled = true
+			order = append(order, "next")
+
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+		assert.Equal(t, []string{"next", "after"}, order, "after next enricher should run after next")
+
+		str := b.String()
+		assert.Contains(t, str, `"after":"yes"`)
+	})
+
 	t.Run("should escalate log level for slow requests", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)

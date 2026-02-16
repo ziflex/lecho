@@ -25,6 +25,8 @@ type (
 		BeforeNext middleware.BeforeFunc
 		// Enricher is a function that can be used to enrich the logger with additional information.
 		Enricher Enricher
+		// AfterNextEnricher is a function that can be used to enrich the logger with additional information after the next handler is called.
+		AfterNextEnricher Enricher
 		// RequestIDHeader is the header name to use for the request ID in a log record.
 		RequestIDHeader string
 		// RequestIDKey is the key name to use for the request ID in a log record.
@@ -137,6 +139,16 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			if config.AfterNextSkipper(c) {
 				return err
+			}
+
+			if config.AfterNextEnricher != nil {
+				// to avoid mutation of shared instance
+				if !cloned {
+					logger = From(logger.log)
+					cloned = true
+				}
+
+				logger.log = config.AfterNextEnricher(c, logger.log.With()).Logger()
 			}
 
 			stop := time.Now()
