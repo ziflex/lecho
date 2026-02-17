@@ -141,25 +141,22 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				return err
 			}
 
-			if config.AfterNextEnricher != nil {
-				// to avoid mutation of shared instance
-				if !cloned {
-					logger = From(logger.log)
-					cloned = true
-				}
+			afterNextLog := logger.log
 
-				logger.log = config.AfterNextEnricher(c, logger.log.With()).Logger()
+			if config.AfterNextEnricher != nil {
+				afterNextLog = config.AfterNextEnricher(c, logger.log.With()).Logger()
 			}
 
 			stop := time.Now()
 			latency := stop.Sub(start)
+
 			var mainEvt *zerolog.Event
 			if err != nil {
-				mainEvt = logger.log.Err(err)
+				mainEvt = afterNextLog.Err(err)
 			} else if config.RequestLatencyLimit != 0 && latency > config.RequestLatencyLimit {
-				mainEvt = logger.log.WithLevel(config.RequestLatencyLevel)
+				mainEvt = afterNextLog.WithLevel(config.RequestLatencyLevel)
 			} else {
-				mainEvt = logger.log.WithLevel(logger.log.GetLevel())
+				mainEvt = afterNextLog.WithLevel(afterNextLog.GetLevel())
 			}
 
 			var evt *zerolog.Event
@@ -190,6 +187,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			if config.NestKey != "" { // Nest the new event (dict) under the nest key.
 				mainEvt.Dict(config.NestKey, evt)
 			}
+
 			mainEvt.Send()
 
 			return err
