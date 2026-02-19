@@ -296,6 +296,40 @@ func main() {
 }
 ```
 
+#### AfterNextEnricher
+
+The `AfterNextEnricher` function allows you to add custom fields to log entries after the next handler has executed. This is useful for adding fields that depend on the outcome of the request processing, such as response status or values set during request handling.
+
+```go
+package main
+
+import (
+    "os"
+    "github.com/labstack/echo/v4"
+    "github.com/rs/zerolog"
+    "github.com/ziflex/lecho/v3"
+)
+
+func main() {
+    e := echo.New()
+    logger := lecho.New(os.Stdout, lecho.WithTimestamp())
+    
+    e.Use(lecho.Middleware(lecho.Config{
+        Logger: logger,
+        AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+            // Add response status code after the handler has executed
+            logger = logger.Int("status", c.Response().Status)
+            return logger
+        },
+    }))
+    
+    e.GET("/api/profile", func(c echo.Context) error {
+        c.Set("user_id", "user123") // This will be logged
+        return c.JSON(200, map[string]string{"status": "ok"})
+    })
+}
+```
+
 **Sample output:**
 ```json
 {"level":"info","user_id":"user123","trace_id":"abc-def-123","remote_ip":"127.0.0.1","method":"GET","uri":"/api/profile","status":200,"time":"2023-10-15T10:30:00Z"}
@@ -356,6 +390,7 @@ The `lecho.Config` struct provides extensive customization options:
 | `AfterNextSkipper` | `middleware.Skipper` | Skip logging after handler execution | `middleware.DefaultSkipper` |
 | `BeforeNext` | `middleware.BeforeFunc` | Function executed before next handler | `nil` |
 | `Enricher` | `lecho.Enricher` | Function to add custom fields | `nil` |
+| `AfterNextEnricher` | `lecho.Enricher` | Function to add custom fields after the next handler runs; invoked only if `AfterNextSkipper` returns false | `nil` |
 | `RequestIDHeader` | `string` | Header name for request ID | `"X-Request-ID"` |
 | `RequestIDKey` | `string` | JSON key for request ID in logs | `"id"` |
 | `NestKey` | `string` | Key for nesting request fields | `""` (no nesting) |
@@ -459,11 +494,22 @@ func main() {
 			}
 			return logger
 		},
+		AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			// Example of adding a field after the next handler runs, based on context value
+			logger = logger.Interface("some_key", c.Get("some_key"))
+			return logger
+		},
 		Skipper: func(c echo.Context) bool {
 			// Skip logging for health check endpoints
 			return c.Request().URL.Path == "/health"
 		},
 	}))
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("some_key", "some_value") // Example of setting context value for after next enricher
+			return next(c)
+		}
+	})
 	
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")

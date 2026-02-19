@@ -101,6 +101,137 @@ func TestMiddleware(t *testing.T) {
 		assert.Contains(t, str, `"test":"test"`)
 	})
 
+	t.Run("should use after next enricher", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+
+		order := make([]string, 0, 2)
+		var nextCalled bool
+
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				assert.True(t, nextCalled, "after next enricher should run after next")
+				order = append(order, "after")
+
+				return logger.Str("after", "yes")
+			},
+		})
+
+		next := func(c echo.Context) error {
+			nextCalled = true
+			order = append(order, "next")
+
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+		assert.Equal(t, []string{"next", "after"}, order, "after next enricher should run after next")
+
+		str := b.String()
+		assert.Contains(t, str, `"after":"yes"`)
+	})
+
+	t.Run("should use enricher and after next enricher together", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+
+		order := make([]string, 0, 3)
+		var beforeCalled bool
+		var nextCalled bool
+		var afterCalled bool
+
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				beforeCalled = true
+				order = append(order, "before")
+
+				return logger.Str("before", "yes")
+			},
+			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				afterCalled = true
+				// AfterNextEnricher should run after the next handler and after the pre-handler enricher.
+				assert.True(t, beforeCalled, "pre-handler enricher should have been called before after next enricher")
+				assert.True(t, nextCalled, "next should run before after next enricher")
+				order = append(order, "after")
+
+				return logger.Str("after", "yes")
+			},
+		})
+
+		next := func(c echo.Context) error {
+			nextCalled = true
+			order = append(order, "next")
+
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+		assert.True(t, beforeCalled, "pre-handler enricher should be called")
+		assert.True(t, nextCalled, "next handler should be called")
+		assert.True(t, afterCalled, "after next enricher should be called")
+		assert.Equal(t, []string{"before", "next", "after"}, order, "enrichers and next should be called in the correct order")
+
+		str := b.String()
+		assert.Contains(t, str, `"before":"yes"`)
+		assert.Contains(t, str, `"after":"yes"`)
+	})
+	t.Run("should use after next enricher with context value", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				// read value set by handler
+				if v := c.Get("user_id"); v != nil {
+					if userID, ok := v.(string); ok {
+						return logger.Str("user_id", userID)
+					}
+				}
+				return logger
+			},
+		})
+
+		next := func(c echo.Context) error {
+			// simulate middleware/handler adding context-specific info
+			c.Set("user_id", "123")
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Contains(t, str, `"user_id":"123"`)
+	})
 	t.Run("should escalate log level for slow requests", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
