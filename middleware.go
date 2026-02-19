@@ -25,7 +25,12 @@ type (
 		BeforeNext middleware.BeforeFunc
 		// Enricher is a function that can be used to enrich the logger with additional information.
 		Enricher Enricher
-		// AfterNextEnricher is a function that can be used to enrich the logger with additional information after the next handler is called.
+		// AfterNextEnricher is a function that can be used to enrich the logger with additional information
+		// after the next handler is called.
+		// 
+		// This is typically used when you need to log values that are only available after other
+		// middleware/handlers have run, such as values stored on the echo.Context by previous
+		// middleware (for example, correlation IDs, user information, or computed response data).
 		AfterNextEnricher Enricher
 		// RequestIDHeader is the header name to use for the request ID in a log record.
 		RequestIDHeader string
