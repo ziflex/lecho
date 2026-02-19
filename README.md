@@ -497,17 +497,17 @@ func main() {
 		AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
 			// Example of adding a field after the next handler runs, based on context value
 			logger = logger.Interface("some_key", c.Get("some_key"))
-            return logger
-        },
+			return logger
+		},
 		Skipper: func(c echo.Context) bool {
 			// Skip logging for health check endpoints
 			return c.Request().URL.Path == "/health"
 		},
 	}))
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-        return func(c echo.Context) error {
-            c.Set("some_key", "some_value") // Example of setting context value for after next enricher
-            return next(c)
+		return func(c echo.Context) error {
+			c.Set("some_key", "some_value") // Example of setting context value for after next enricher
+			return next(c)
 		}
 	})
 	
