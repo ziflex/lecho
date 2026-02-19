@@ -141,6 +141,43 @@ func TestMiddleware(t *testing.T) {
 		assert.Contains(t, str, `"after":"yes"`)
 	})
 
+	t.Run("should use after next enricher with context value", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				// read value set by handler
+				if v := c.Get("user_id"); v != nil {
+					if userID, ok := v.(string); ok {
+						return logger.Str("user_id", userID)
+					}
+				}
+				return logger
+			},
+		})
+
+		next := func(c echo.Context) error {
+			// simulate middleware/handler adding context-specific info
+			c.Set("user_id", "123")
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Contains(t, str, `"user_id":"123"`)
+	})
 	t.Run("should escalate log level for slow requests", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
