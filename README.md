@@ -397,6 +397,7 @@ The `lecho.Config` struct provides extensive customization options:
 | `HandleError` | `bool` | Propagate errors to error handler | `false` |
 | `RequestLatencyLimit` | `time.Duration` | Threshold for slow request detection | `0` (disabled) |
 | `RequestLatencyLevel` | `zerolog.Level` | Log level for slow requests | `zerolog.InfoLevel` |
+| `UseCustomFieldsOnly` | `bool` | Use only custom fields in logger, i.e. defined in the `Enricher` | `false` |
 
 ## Helpers
 

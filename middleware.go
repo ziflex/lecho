@@ -27,7 +27,7 @@ type (
 		Enricher Enricher
 		// AfterNextEnricher is a function that can be used to enrich the logger with additional information
 		// after the next handler is called.
-		// 
+		//
 		// This is typically used when you need to log values that are only available after other
 		// middleware/handlers have run, such as values stored on the echo.Context by previous
 		// middleware (for example, correlation IDs, user information, or computed response data).
@@ -44,6 +44,9 @@ type (
 		RequestLatencyLimit time.Duration
 		// The level to log at if RequestLatencyLimit is exceeded
 		RequestLatencyLevel zerolog.Level
+		// UseCustomFieldsOnly indicates whether to use only the logging attributes defined by the caller, i.e. the additional information provided by the enricher.
+		// Otherwise there will used default names for the attributes
+		UseCustomFieldsOnly bool
 	}
 
 	// Enricher is a function that can be used to enrich the logger with additional information.
@@ -170,24 +173,25 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			} else {
 				evt = mainEvt
 			}
+			if !config.UseCustomFieldsOnly {
+				evt.Str("remote_ip", c.RealIP())
+				evt.Str("host", req.Host)
+				evt.Str("method", req.Method)
+				evt.Str("uri", req.RequestURI)
+				evt.Str("user_agent", req.UserAgent())
+				evt.Int("status", res.Status)
+				evt.Str("referer", req.Referer())
+				evt.Dur("latency", latency)
+				evt.Str("latency_human", latency.String())
 
-			evt.Str("remote_ip", c.RealIP())
-			evt.Str("host", req.Host)
-			evt.Str("method", req.Method)
-			evt.Str("uri", req.RequestURI)
-			evt.Str("user_agent", req.UserAgent())
-			evt.Int("status", res.Status)
-			evt.Str("referer", req.Referer())
-			evt.Dur("latency", latency)
-			evt.Str("latency_human", latency.String())
+				cl := req.Header.Get(echo.HeaderContentLength)
+				if cl == "" {
+					cl = "0"
+				}
 
-			cl := req.Header.Get(echo.HeaderContentLength)
-			if cl == "" {
-				cl = "0"
+				evt.Str("bytes_in", cl)
+				evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
 			}
-
-			evt.Str("bytes_in", cl)
-			evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
 
 			if config.NestKey != "" { // Nest the new event (dict) under the nest key.
 				mainEvt.Dict(config.NestKey, evt)
