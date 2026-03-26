@@ -44,8 +44,13 @@ type (
 		RequestLatencyLimit time.Duration
 		// The level to log at if RequestLatencyLimit is exceeded
 		RequestLatencyLevel zerolog.Level
-		// UseCustomFieldsOnly indicates whether to use only the logging attributes defined by the caller, i.e. the additional information provided by the enricher.
-		// Otherwise there will used default names for the attributes
+		// UseCustomFieldsOnly controls whether the middleware adds its built-in request fields
+		// (such as method, path, status, and latency) in addition to the attributes defined by
+		// the caller or Enricher. When set to true, those built-in request fields are not added
+		// automatically and must be supplied explicitly if needed.
+		//
+		// This flag does not affect request ID injection via RequestIDHeader/RequestIDKey or any
+		// fields added by AfterNextEnricher.
 		UseCustomFieldsOnly bool
 	}
 
