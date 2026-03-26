@@ -173,7 +173,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			}
 
 			var evt *zerolog.Event
-			if config.NestKey != "" { // Start a new event (dict) if there's a nest key.
+			if config.NestKey != "" && !config.UseCustomFieldsOnly { // Start a new event (dict) if there's a nest key for default fields.
 				evt = zerolog.Dict()
 			} else {
 				evt = mainEvt
@@ -198,7 +198,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
 			}
 
-			if config.NestKey != "" { // Nest the new event (dict) under the nest key.
+			if config.NestKey != "" && !config.UseCustomFieldsOnly { // Nest the new event (dict) under the nest key for default fields.
 				mainEvt.Dict(config.NestKey, evt)
 			}
 
