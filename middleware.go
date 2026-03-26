@@ -44,14 +44,15 @@ type (
 		RequestLatencyLimit time.Duration
 		// The level to log at if RequestLatencyLimit is exceeded
 		RequestLatencyLevel zerolog.Level
-		// UseCustomFieldsOnly controls whether the middleware adds its built-in request fields
+		// SkipDefaultFields controls whether the middleware adds its built-in request fields
 		// (such as method, path, status, and latency) in addition to the attributes defined by
 		// the caller or Enricher. When set to true, those built-in request fields are not added
-		// automatically and must be supplied explicitly if needed.
+		// automatically and must be supplied explicitly.
+		// Otherwise the logs won't contain any request information.
 		//
 		// This flag does not affect request ID injection via RequestIDHeader/RequestIDKey or any
 		// fields added by AfterNextEnricher.
-		UseCustomFieldsOnly bool
+		SkipDefaultFields bool
 	}
 
 	// Enricher is a function that can be used to enrich the logger with additional information.
@@ -93,6 +94,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 	if config.RequestIDHeader == "" {
 		config.RequestIDHeader = echo.HeaderXRequestID
+	}
+
+	if config.SkipDefaultFields && config.Enricher == nil {
+		panic("Enricher is needed if default fields are skipped.")
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -173,12 +178,12 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			}
 
 			var evt *zerolog.Event
-			if config.NestKey != "" && !config.UseCustomFieldsOnly { // Start a new event (dict) if there's a nest key for default fields.
+			if config.NestKey != "" && !config.SkipDefaultFields { // Start a new event (dict) if there's a nest key for default fields.
 				evt = zerolog.Dict()
 			} else {
 				evt = mainEvt
 			}
-			if !config.UseCustomFieldsOnly {
+			if !config.SkipDefaultFields {
 				evt.Str("remote_ip", c.RealIP())
 				evt.Str("host", req.Host)
 				evt.Str("method", req.Method)
@@ -198,7 +203,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
 			}
 
-			if config.NestKey != "" && !config.UseCustomFieldsOnly { // Nest the new event (dict) under the nest key for default fields.
+			if config.NestKey != "" && !config.SkipDefaultFields { // Nest the new event (dict) under the nest key for default fields.
 				mainEvt.Dict(config.NestKey, evt)
 			}
 

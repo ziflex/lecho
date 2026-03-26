@@ -380,7 +380,7 @@ func TestMiddleware(t *testing.T) {
 		str := b.String()
 		assert.Contains(t, str, `"method":"GET"`)
 	})
-	t.Run("should use custom attributes", func(t *testing.T) {
+	t.Run("should skip default attributes", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -391,8 +391,8 @@ func TestMiddleware(t *testing.T) {
 
 		l := lecho.New(b)
 		m := lecho.Middleware(lecho.Config{
-			Logger:              l,
-			UseCustomFieldsOnly: true,
+			Logger:            l,
+			SkipDefaultFields: true,
 			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
 				val := map[string]any{
 					"http.request.method": c.Request().Method,
@@ -414,7 +414,7 @@ func TestMiddleware(t *testing.T) {
 		assert.Contains(t, str, `"http.request.method":"GET"`)
 		assert.NotContains(t, str, `"method":"GET"`)
 	})
-	t.Run("should use custom attributes and not consider NestedKey", func(t *testing.T) {
+	t.Run("should skip default attributes and not consider NestedKey", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -425,9 +425,9 @@ func TestMiddleware(t *testing.T) {
 
 		l := lecho.New(b)
 		m := lecho.Middleware(lecho.Config{
-			Logger:              l,
-			UseCustomFieldsOnly: true,
-			NestKey:             "nested",
+			Logger:            l,
+			SkipDefaultFields: true,
+			NestKey:           "nested",
 			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
 				val := map[string]any{
 					"http.request.method": c.Request().Method,
