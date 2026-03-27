@@ -414,7 +414,7 @@ func TestMiddleware(t *testing.T) {
 		assert.Contains(t, str, `"http.request.method":"GET"`)
 		assert.NotContains(t, str, `"method":"GET"`)
 	})
-	t.Run("should skip default attributes and not consider NestedKey", func(t *testing.T) {
+	t.Run("should skip default attributes and not consider NestKey", func(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
