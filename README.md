@@ -393,11 +393,11 @@ The `lecho.Config` struct provides extensive customization options:
 | `AfterNextEnricher` | `lecho.Enricher` | Function to add custom fields after the next handler runs; invoked only if `AfterNextSkipper` returns false | `nil` |
 | `RequestIDHeader` | `string` | Header name for request ID | `"X-Request-ID"` |
 | `RequestIDKey` | `string` | JSON key for request ID in logs | `"id"` |
-| `NestKey` | `string` | Key for nesting request fields | `""` (no nesting) |
+| `NestKey` | `string` | Key for nesting request fields. Will only affect built-in fields (`SkipDefaultFields` is set to `false`) | `""` (no nesting) |
 | `HandleError` | `bool` | Propagate errors to error handler | `false` |
 | `RequestLatencyLimit` | `time.Duration` | Threshold for slow request detection | `0` (disabled) |
 | `RequestLatencyLevel` | `zerolog.Level` | Log level for slow requests | `zerolog.InfoLevel` |
-| `UseCustomFieldsOnly` | `bool` | Disable built-in request fields (`remote_ip`, `host`, `method`, `uri`, `user_agent`, `status`, `referer`, `latency`, `bytes_in`, `bytes_out`); custom fields from `Enricher`, `AfterNextEnricher`, and request ID (`RequestIDHeader`/`RequestIDKey`) may still be logged | `false` |
+| `SkipDefaultFields` | `bool` | Disable built-in request fields (`remote_ip`, `host`, `method`, `uri`, `user_agent`, `status`, `referer`, `latency`, `bytes_in`, `bytes_out`); custom fields from `Enricher`, `AfterNextEnricher`, and request ID (`RequestIDHeader`/`RequestIDKey`) may still be logged | `false` |
 
 ## Helpers
 

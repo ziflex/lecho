@@ -50,6 +50,9 @@ type (
 		// automatically and must be supplied explicitly.
 		// Otherwise the logs won't contain any request information.
 		//
+		// If a NestKey is supplied, it will only be used if the flag is set to 'false'. So only
+		// built-in fields can be nested.
+		//
 		// This flag does not affect request ID injection via RequestIDHeader/RequestIDKey or any
 		// fields added by AfterNextEnricher.
 		SkipDefaultFields bool
@@ -96,8 +99,8 @@ func Middleware(config Config) echo.MiddlewareFunc {
 		config.RequestIDHeader = echo.HeaderXRequestID
 	}
 
-	if config.SkipDefaultFields && config.Enricher == nil {
-		panic("Enricher is needed if default fields are skipped.")
+	if config.SkipDefaultFields && config.Enricher == nil && config.AfterNextEnricher == nil {
+		panic("An enricher is needed if default fields are skipped and no enricher is configured.")
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -178,7 +181,10 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			}
 
 			var evt *zerolog.Event
-			if config.NestKey != "" && !config.SkipDefaultFields { // Start a new event (dict) if there's a nest key for default fields.
+
+			withNewDict := config.NestKey != "" && !config.SkipDefaultFields
+
+			if withNewDict { // Start a new event (dict) if there's a nest key for default fields.
 				evt = zerolog.Dict()
 			} else {
 				evt = mainEvt
@@ -203,7 +209,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
 			}
 
-			if config.NestKey != "" && !config.SkipDefaultFields { // Nest the new event (dict) under the nest key for default fields.
+			if withNewDict { // Nest the new event (dict) under the nest key for default fields.
 				mainEvt.Dict(config.NestKey, evt)
 			}
 
