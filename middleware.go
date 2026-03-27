@@ -100,7 +100,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 	}
 
 	if config.SkipDefaultFields && config.Enricher == nil && config.AfterNextEnricher == nil {
-		panic("An enricher is needed if default fields are skipped and no enricher is configured.")
+		panic("lecho: SkipDefaultFields requires at least one of Enricher or AfterNextEnricher to be set")
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
