@@ -50,7 +50,7 @@ type (
 		// automatically and must be supplied explicitly.
 		// Otherwise the logs won't contain any request information.
 		// This flag also affects request ID injection via RequestIDHeader/RequestIDKey, which will
-		// will also be skipped, if this flag is set to 'true'.
+		// also be skipped if this flag is set to 'true'.
 		//
 		// If a NestKey is supplied, it will only be used if the flag is set to 'false'. So only
 		// built-in fields can be nested.
