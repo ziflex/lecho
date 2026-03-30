@@ -49,12 +49,13 @@ type (
 		// the caller or Enricher. When set to true, those built-in request fields are not added
 		// automatically and must be supplied explicitly.
 		// Otherwise the logs won't contain any request information.
+		// This flag also affects request ID injection via RequestIDHeader/RequestIDKey, which will
+		// will also be skipped, if this flag is set to 'true'.
 		//
 		// If a NestKey is supplied, it will only be used if the flag is set to 'false'. So only
 		// built-in fields can be nested.
 		//
-		// This flag does not affect request ID injection via RequestIDHeader/RequestIDKey or any
-		// fields added by AfterNextEnricher.
+		// This flag does not affect any fields added by AfterNextEnricher.
 		SkipDefaultFields bool
 	}
 
@@ -123,7 +124,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			cloned := false
 			logger := config.Logger
 
-			if id != "" {
+			if id != "" && !config.SkipDefaultFields {
 				logger = From(logger.log, WithField(config.RequestIDKey, id))
 				cloned = true
 			}

@@ -391,8 +391,8 @@ The `lecho.Config` struct provides extensive customization options:
 | `BeforeNext` | `middleware.BeforeFunc` | Function executed before next handler | `nil` |
 | `Enricher` | `lecho.Enricher` | Function to add custom fields | `nil` |
 | `AfterNextEnricher` | `lecho.Enricher` | Function to add custom fields after the next handler runs; invoked only if `AfterNextSkipper` returns false | `nil` |
-| `RequestIDHeader` | `string` | Header name for request ID | `"X-Request-ID"` |
-| `RequestIDKey` | `string` | JSON key for request ID in logs | `"id"` |
+| `RequestIDHeader` | `string` | Header name for request ID; used only if `SkipDefaultFields` is set to `false`  | `"X-Request-ID"` |
+| `RequestIDKey` | `string` | JSON key for request ID in logs; used only if `SkipDefaultFields` is set to `false` | `"id"` |
 | `NestKey` | `string` | Key for nesting request fields. Will only affect built-in fields (`SkipDefaultFields` is set to `false`) | `""` (no nesting) |
 | `HandleError` | `bool` | Propagate errors to error handler | `false` |
 | `RequestLatencyLimit` | `time.Duration` | Threshold for slow request detection | `0` (disabled) |

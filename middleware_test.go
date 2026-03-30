@@ -450,4 +450,41 @@ func TestMiddleware(t *testing.T) {
 		assert.NotContains(t, str, `"nested.method":"GET"`)
 		assert.NotContains(t, str, `"nested"`)
 	})
+	t.Run("should skip default attributes and not consider RequestID", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+
+		l := lecho.New(b)
+		m := lecho.Middleware(lecho.Config{
+			Logger:            l,
+			SkipDefaultFields: true,
+			RequestIDHeader:   "myRequestID",
+			RequestIDKey:      "my.request.id",
+			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+				val := map[string]any{
+					"http.request.method": c.Request().Method,
+				}
+				return logger.Fields(val)
+			},
+		})
+
+		next := func(c echo.Context) error {
+			return nil
+		}
+
+		handler := m(next)
+		err := handler(c)
+
+		assert.NoError(t, err, "should not return error")
+
+		str := b.String()
+		assert.Contains(t, str, `"http.request.method":"GET"`)
+		assert.NotContains(t, str, `"my.request.id":"myRequestID"`)
+		assert.NotContains(t, str, `"my.request.id"`)
+	})
 }
