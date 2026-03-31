@@ -454,6 +454,7 @@ func TestMiddleware(t *testing.T) {
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req.Header.Set("myRequestID", "my.request.id")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
