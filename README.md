@@ -379,6 +379,29 @@ func main() {
 **With `HandleError: false` (default):** Errors are logged but not propagated to Echo's error handler.  
 **With `HandleError: true`:** Errors are both logged and passed to Echo's error handler for proper HTTP response handling.
 
+### Skipping Built-in Request Fields
+
+Use `SkipDefaultFields` when you want full control over which request attributes are emitted, for example when you need to log OpenTelemetry-style field names instead of lecho's built-in keys.
+
+```go
+e.Use(lecho.Middleware(lecho.Config{
+	Logger:            logger,
+	SkipDefaultFields: true,
+	Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+		return logger.
+			Str("http.request.method", c.Request().Method).
+			Str("url.path", c.Request().URL.Path)
+	},
+}))
+```
+
+When `SkipDefaultFields` is enabled:
+
+- built-in request fields such as `method`, `status`, `latency`, and `bytes_out` are not added automatically
+- `RequestIDHeader` / `RequestIDKey` are ignored
+- `NestKey` is ignored because only built-in fields can be nested
+- at least one of `Enricher` or `AfterNextEnricher` must be configured
+
 ### Middleware Configuration Options
 
 The `lecho.Config` struct provides extensive customization options:
@@ -391,13 +414,13 @@ The `lecho.Config` struct provides extensive customization options:
 | `BeforeNext` | `middleware.BeforeFunc` | Function executed before next handler | `nil` |
 | `Enricher` | `lecho.Enricher` | Function to add custom fields | `nil` |
 | `AfterNextEnricher` | `lecho.Enricher` | Function to add custom fields after the next handler runs; invoked only if `AfterNextSkipper` returns false | `nil` |
-| `RequestIDHeader` | `string` | Header name for request ID; used only if `SkipDefaultFields` is set to `false`  | `"X-Request-ID"` |
+| `RequestIDHeader` | `string` | Header name for request ID; used only if `SkipDefaultFields` is set to `false` | `"X-Request-ID"` |
 | `RequestIDKey` | `string` | JSON key for request ID in logs; used only if `SkipDefaultFields` is set to `false` | `"id"` |
 | `NestKey` | `string` | Key for nesting request fields. Will only affect built-in fields (`SkipDefaultFields` is set to `false`) | `""` (no nesting) |
 | `HandleError` | `bool` | Propagate errors to error handler | `false` |
 | `RequestLatencyLimit` | `time.Duration` | Threshold for slow request detection | `0` (disabled) |
 | `RequestLatencyLevel` | `zerolog.Level` | Log level for slow requests | `zerolog.InfoLevel` |
-| `SkipDefaultFields` | `bool` | Disable built-in request fields (`remote_ip`, `host`, `method`, `uri`, `user_agent`, `status`, `referer`, `latency`, `bytes_in`, `bytes_out`); custom fields from `Enricher`, `AfterNextEnricher`, and request ID (`RequestIDHeader`/`RequestIDKey`) may still be logged | `false` |
+| `SkipDefaultFields` | `bool` | Disable built-in request fields (`remote_ip`, `host`, `method`, `uri`, `user_agent`, `status`, `referer`, `latency`, `bytes_in`, `bytes_out`); only fields added through `Enricher` or `AfterNextEnricher` are logged, and at least one of them must be configured | `false` |
 
 ## Helpers
 
