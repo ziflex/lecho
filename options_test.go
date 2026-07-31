@@ -2,261 +2,171 @@ package lecho_test
 
 import (
 	"bytes"
-	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
-	"github.com/ziflex/lecho/v3"
+
+	"github.com/ziflex/lecho/v4"
 )
 
-func TestWithCaller(t *testing.T) {
-	b := &bytes.Buffer{}
+func TestOptions(t *testing.T) {
+	t.Run("apply in order", func(t *testing.T) {
+		var applied []string
+		first := lecho.Option(func(logger zerolog.Logger) zerolog.Logger {
+			applied = append(applied, "first")
+			return logger
+		})
+		second := lecho.Option(func(logger zerolog.Logger) zerolog.Logger {
+			applied = append(applied, "second")
+			return logger
+		})
 
-	l := lecho.New(b, lecho.WithCaller())
+		lecho.New(&bytes.Buffer{}, first, second)
 
-	l.Print("foobar")
+		assert.Equal(t, []string{"first", "second"}, applied)
+	})
 
-	type Log struct {
-		Level   string `json:"level"`
-		Caller  string `json:"caller"`
-		Message string `json:"message"`
-	}
+	t.Run("preserve existing context", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		base := zerolog.New(b).With().Str("existing", "yes").Logger()
+		logger := lecho.From(base, lecho.WithField("added", "yes"))
 
-	log := &Log{}
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	err := json.Unmarshal(b.Bytes(), log)
+		assert.Contains(t, b.String(), `"existing":"yes"`)
+		assert.Contains(t, b.String(), `"added":"yes"`)
+	})
 
-	assert.NoError(t, err)
+	t.Run("level", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithLevel(zerolog.WarnLevel))
+		unwrapped := logger.Unwrap()
 
-	segments := strings.Split(log.Caller, ":")
-	filePath := filepath.Base(segments[0])
+		unwrapped.Debug().Msg("debug")
+		unwrapped.Warn().Msg("warn")
 
-	assert.Equal(t, filePath, "logger.go")
-}
+		assert.Equal(t, zerolog.WarnLevel, unwrapped.GetLevel())
+		assert.NotContains(t, b.String(), `"message":"debug"`)
+		assert.Contains(t, b.String(), `"message":"warn"`)
+	})
 
-func TestWithCallerWithSkipFrameCount(t *testing.T) {
-	b := &bytes.Buffer{}
+	t.Run("field", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithField("service", "logging"))
 
-	l := lecho.New(b, lecho.WithCallerWithSkipFrameCount(3))
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	l.Print("foobar")
+		assert.Contains(t, b.String(), `"service":"logging"`)
+	})
 
-	type Log struct {
-		Level   string `json:"level"`
-		Caller  string `json:"caller"`
-		Message string `json:"message"`
-	}
+	t.Run("fields", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithFields(map[string]any{
+			"service": "logging",
+			"version": 2,
+		}))
 
-	log := &Log{}
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	err := json.Unmarshal(b.Bytes(), log)
+		assert.Contains(t, b.String(), `"service":"logging"`)
+		assert.Contains(t, b.String(), `"version":2`)
+	})
 
-	assert.NoError(t, err)
+	t.Run("timestamp", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithTimestamp())
 
-	segments := strings.Split(log.Caller, ":")
-	filePath := filepath.Base(segments[0])
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	assert.Equal(t, filePath, "options_test.go")
-}
+		assert.Contains(t, b.String(), `"`+zerolog.TimestampFieldName+`":`)
+	})
 
-func TestWithField(t *testing.T) {
-	b := &bytes.Buffer{}
+	t.Run("caller", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithCaller())
 
-	l := lecho.New(b, lecho.WithField("service", "logging"))
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	l.Print("foobar")
+		assert.Contains(t, b.String(), `"`+zerolog.CallerFieldName+`":`)
+		assert.Contains(t, b.String(), "options_test.go")
+	})
 
-	type Log struct {
-		Level   string `json:"level"`
-		Service string `json:"service"`
-		Message string `json:"message"`
-	}
+	t.Run("caller with skip frame count", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithCallerWithSkipFrameCount(3))
 
-	log := &Log{}
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	err := json.Unmarshal(b.Bytes(), log)
+		assert.Contains(t, b.String(), `"`+zerolog.CallerFieldName+`":`)
+	})
 
-	assert.NoError(t, err)
-	assert.Equal(t, log.Service, "logging")
-}
+	t.Run("prefix", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		logger := lecho.New(b, lecho.WithPrefix("Test"))
 
-func TestWithFields(t *testing.T) {
-	b := &bytes.Buffer{}
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("test")
 
-	l := lecho.New(b, lecho.WithFields(map[string]interface{}{
-		"host": "localhost",
-		"port": 8080,
-	}))
-
-	l.Print("foobar")
-
-	type Log struct {
-		Level   string `json:"level"`
-		Host    string `json:"host"`
-		Port    int    `json:"port"`
-		Message string `json:"message"`
-	}
-
-	log := &Log{}
-
-	err := json.Unmarshal(b.Bytes(), log)
-
-	assert.NoError(t, err)
-	assert.Equal(t, log.Host, "localhost")
-	assert.Equal(t, log.Port, 8080)
-}
-
-type (
-	Hook struct {
-		logs []HookLog
-	}
-
-	HookLog struct {
-		level   zerolog.Level
-		message string
-	}
-)
-
-func (h *Hook) Run(e *zerolog.Event, level zerolog.Level, message string) {
-	h.logs = append(h.logs, HookLog{
-		level:   level,
-		message: message,
+		assert.Contains(t, b.String(), `"prefix":"Test"`)
 	})
 }
 
-func TestWithHook(t *testing.T) {
-	b := &bytes.Buffer{}
-	h := &Hook{}
-	l := lecho.New(b, lecho.WithHook(h))
-
-	l.Info("Foo")
-	l.Warn("Bar")
-
-	assert.Len(t, h.logs, 2)
-	assert.Equal(t, h.logs[0].level, zerolog.InfoLevel)
-	assert.Equal(t, h.logs[0].message, "Foo")
-	assert.Equal(t, h.logs[1].level, zerolog.WarnLevel)
-	assert.Equal(t, h.logs[1].message, "Bar")
+type recordingHook struct {
+	levels []zerolog.Level
 }
 
-func TestWithHookFunc(t *testing.T) {
-	b := &bytes.Buffer{}
-	logs := make([]HookLog, 0, 2)
-	l := lecho.New(b, lecho.WithHookFunc(func(e *zerolog.Event, level zerolog.Level, message string) {
-		logs = append(logs, HookLog{
-			level:   level,
-			message: message,
-		})
-	}))
-
-	l.Info("Foo")
-	l.Warn("Bar")
-
-	assert.Len(t, logs, 2)
-	assert.Equal(t, logs[0].level, zerolog.InfoLevel)
-	assert.Equal(t, logs[0].message, "Foo")
-	assert.Equal(t, logs[1].level, zerolog.WarnLevel)
-	assert.Equal(t, logs[1].message, "Bar")
+func (h *recordingHook) Run(_ *zerolog.Event, level zerolog.Level, _ string) {
+	h.levels = append(h.levels, level)
 }
 
-func TestWithLevel(t *testing.T) {
-	b := &bytes.Buffer{}
-	l := lecho.New(b, lecho.WithLevel(log.WARN))
+func TestHookOptions(t *testing.T) {
+	t.Run("hook", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		hook := &recordingHook{}
+		logger := lecho.New(b, lecho.WithHook(hook))
+		unwrapped := logger.Unwrap()
 
-	l.Debug("Test")
+		unwrapped.Info().Msg("info")
+		unwrapped.Warn().Msg("warn")
 
-	assert.Equal(t, b.String(), "")
+		assert.Equal(t, []zerolog.Level{zerolog.InfoLevel, zerolog.WarnLevel}, hook.levels)
+	})
 
-	l.Warn("Foobar")
+	t.Run("hook function", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		var messages []string
+		logger := lecho.New(b, lecho.WithHookFunc(func(_ *zerolog.Event, _ zerolog.Level, message string) {
+			messages = append(messages, message)
+		}))
+		unwrapped := logger.Unwrap()
 
-	assert.Equal(t, b.String(), `{"level":"warn","message":"Foobar"}
-`)
+		unwrapped.Info().Msg("info")
+		unwrapped.Warn().Msg("warn")
+
+		assert.Equal(t, []string{"info", "warn"}, messages)
+	})
 }
 
-func TestWithPrefix(t *testing.T) {
-	b := &bytes.Buffer{}
-	l := lecho.New(b, lecho.WithPrefix("Test"))
-
-	l.Warn("Foobar")
-
-	assert.Equal(t, b.String(), `{"level":"warn","prefix":"Test","message":"Foobar"}
-`)
-}
-
-func TestWithTimestamp(t *testing.T) {
-	b := &bytes.Buffer{}
-
-	l := lecho.New(b, lecho.WithTimestamp())
-
-	l.Print("foobar")
-
-	type Log struct {
-		Level   string    `json:"level"`
-		Message string    `json:"message"`
-		Time    time.Time `json:"time"`
-	}
-
-	log := &Log{}
-
-	err := json.Unmarshal(b.Bytes(), log)
-
-	assert.NoError(t, err)
-	assert.NotEmpty(t, log.Time)
-}
-
-func TestGlobalLevel(t *testing.T) {
-	// Save original global level
+func TestOptionsRespectGlobalLevel(t *testing.T) {
 	originalLevel := zerolog.GlobalLevel()
 	defer zerolog.SetGlobalLevel(originalLevel)
+	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
-	t.Run("should respect GlobalLevel when creating logger from existing zerolog", func(t *testing.T) {
-		// Set global level to WARN
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	b := &bytes.Buffer{}
+	logger := lecho.New(b, lecho.WithLevel(zerolog.DebugLevel))
+	unwrapped := logger.Unwrap()
 
-		b := &bytes.Buffer{}
-		// Create a zerolog with default TraceLevel
-		zl := zerolog.New(b)
+	unwrapped.Debug().Msg("debug")
+	unwrapped.Warn().Msg("warn")
 
-		// Create lecho logger from existing zerolog
-		l := lecho.From(zl)
-
-		// The effective level should be WARN (from GlobalLevel), not DEBUG (from TraceLevel)
-		assert.Equal(t, log.WARN, l.Level())
-
-		// Debug should not log anything
-		l.Debug("debug message")
-		assert.Equal(t, "", b.String())
-
-		// Warn should log
-		l.Warn("warn message")
-		assert.Contains(t, b.String(), "warn message")
-	})
-
-	t.Run("should use logger level when GlobalLevel is lower", func(t *testing.T) {
-		// Set global level to DEBUG
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-
-		b := &bytes.Buffer{}
-		// Create a zerolog with ErrorLevel (higher than global)
-		zl := zerolog.New(b).Level(zerolog.ErrorLevel)
-
-		// Create lecho logger from existing zerolog
-		l := lecho.From(zl)
-
-		// The effective level should be ERROR (from logger), not DEBUG (from GlobalLevel)
-		assert.Equal(t, log.ERROR, l.Level())
-
-		// Warn should not log anything
-		l.Warn("warn message")
-		assert.Equal(t, "", b.String())
-
-		// Error should log
-		l.Error("error message")
-		assert.Contains(t, b.String(), "error message")
-	})
+	assert.False(t, strings.Contains(b.String(), `"message":"debug"`))
+	assert.Contains(t, b.String(), `"message":"warn"`)
 }

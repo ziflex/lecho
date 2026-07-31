@@ -2,258 +2,153 @@ package lecho_test
 
 import (
 	"bytes"
-	"fmt"
+	"io"
 	"testing"
 
-	"github.com/labstack/gommon/log"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func TestNew(t *testing.T) {
 	b := &bytes.Buffer{}
+	logger := lecho.New(b)
 
-	l := lecho.New(b)
+	unwrapped := logger.Unwrap()
+	unwrapped.Info().Msg("foo")
 
-	l.Print("foo")
-
-	assert.Equal(
-		t,
-		`{"level":"-","message":"foo"}
-`,
-		b.String(),
-	)
+	assert.Equal(t, `{"level":"info","message":"foo"}`+"\n", b.String())
 }
 
 func TestNewWithZerolog(t *testing.T) {
-	b := &bytes.Buffer{}
-	zl := zerolog.New(b)
+	t.Run("value", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		zerologger := zerolog.New(b).With().Str("key", "value").Logger()
+		logger := lecho.New(zerologger)
 
-	l := lecho.New(zl.With().Str("key", "test").Logger())
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("foo")
 
-	l.Print("foo")
+		assert.Contains(t, b.String(), `"key":"value"`)
+	})
 
-	assert.Equal(
-		t,
-		`{"key":"test","level":"-","message":"foo"}
-`,
-		b.String(),
-	)
+	t.Run("pointer", func(t *testing.T) {
+		b := &bytes.Buffer{}
+		zerologger := zerolog.New(b).With().Str("key", "pointer").Logger()
+		logger := lecho.New(&zerologger)
+
+		unwrapped := logger.Unwrap()
+		unwrapped.Info().Msg("foo")
+
+		assert.Contains(t, b.String(), `"key":"pointer"`)
+	})
+
+	t.Run("nil pointer", func(t *testing.T) {
+		var zerologger *zerolog.Logger
+
+		assert.NotPanics(t, func() {
+			lecho.New(zerologger)
+		})
+	})
 }
 
 func TestFrom(t *testing.T) {
 	b := &bytes.Buffer{}
+	zerologger := zerolog.New(b).With().Str("key", "test").Logger()
+	logger := lecho.From(zerologger, lecho.WithField("source", "from"))
 
-	zl := zerolog.New(b)
-	l := lecho.From(zl.With().Str("key", "test").Logger())
+	unwrapped := logger.Unwrap()
+	unwrapped.Info().Msg("foo")
 
-	l.Print("foo")
-
-	assert.Equal(
-		t,
-		`{"key":"test","level":"-","message":"foo"}
-`,
-		b.String(),
-	)
+	assert.Contains(t, b.String(), `"key":"test"`)
+	assert.Contains(t, b.String(), `"source":"from"`)
 }
 
-func TestLogger_SetPrefix(t *testing.T) {
-	//	b := &bytes.Buffer{}
-	//
-	//	l := lecho.New(b)
-	//
-	//	l.Print("t-e-s-t")
-	//
-	//	assert.Equal(
-	//		t,
-	//		`{"level":"-","message":"t-e-s-t"}
-	//`,
-	//		b.String(),
-	//	)
-	//
-	//	b.Reset()
-	//
-	//	l.SetPrefix("foo")
-	//	l.Print("test")
-	//
-	//	assert.Equal(
-	//		t,
-	//		`{"prefix":"foo","level":"-","message":"test"}
-	//`,
-	//		b.String(),
-	//	)
-	//
-	//	b.Reset()
-	//
-	//	l.SetPrefix("bar")
-	//	l.Print("test-test")
-	//
-	//	assert.Equal(
-	//		t,
-	//		`{"prefix":"bar","level":"-","message":"test-test"}
-	//`,
-	//		b.String(),
-	//	)
-}
-
-func TestLogger_Output(t *testing.T) {
-	out1 := &bytes.Buffer{}
-
-	l := lecho.New(out1)
-
-	l.Print("foo")
-	l.Print("bar")
-
-	out2 := &bytes.Buffer{}
-	l.SetOutput(out2)
-
-	l.Print("baz")
-
-	assert.Equal(
-		t,
-		`{"level":"-","message":"foo"}
-{"level":"-","message":"bar"}
-`,
-		out1.String(),
-	)
-
-	assert.Equal(
-		t,
-		`{"level":"-","message":"baz"}
-`,
-		out2.String(),
-	)
-}
-
-func TestLogger_SetLevel(t *testing.T) {
+func TestSlog(t *testing.T) {
 	b := &bytes.Buffer{}
+	logger := lecho.New(b, lecho.WithField("logger", "lecho"))
 
-	l := lecho.New(b)
+	logger.Slog().Info("from slog", "answer", 42)
 
-	l.Debug("foo")
-
-	assert.Equal(
-		t,
-		`{"level":"debug","message":"foo"}
-`,
-		b.String(),
-	)
-
-	b.Reset()
-
-	l.SetLevel(log.WARN)
-
-	l.Debug("foo")
-
-	assert.Equal(t, "", b.String())
+	assert.Contains(t, b.String(), `"logger":"lecho"`)
+	assert.Contains(t, b.String(), `"answer":42`)
+	assert.Contains(t, b.String(), `"message":"from slog"`)
 }
 
-func TestLogger(t *testing.T) {
-	type (
-		SimpleLog struct {
-			Level zerolog.Level
-			Fn    func(i ...interface{})
-		}
+func TestLoggerLevel(t *testing.T) {
+	b := &bytes.Buffer{}
+	logger := lecho.New(b, lecho.WithLevel(zerolog.DebugLevel))
 
-		FormattedLog struct {
-			Level zerolog.Level
-			Fn    func(format string, i ...interface{})
-		}
+	assert.Equal(t, zerolog.DebugLevel, logger.Level())
 
-		JSONLog struct {
-			Level zerolog.Level
-			Fn    func(j log.JSON)
-		}
+	logger.SetLevel(zerolog.WarnLevel)
+
+	assert.Equal(t, zerolog.WarnLevel, logger.Level())
+
+	unwrapped := logger.Unwrap()
+	unwrapped.Debug().Msg("debug")
+	unwrapped.Warn().Msg("warn")
+
+	assert.NotContains(t, b.String(), `"message":"debug"`)
+	assert.Contains(t, b.String(), `"message":"warn"`)
+}
+
+func TestLoggerSetOutput(t *testing.T) {
+	first := &bytes.Buffer{}
+	second := &bytes.Buffer{}
+	logger := lecho.New(
+		first,
+		lecho.WithLevel(zerolog.WarnLevel),
+		lecho.WithField("logger", "lecho"),
 	)
 
+	before := logger.Unwrap()
+	before.Warn().Msg("before")
+
+	logger.SetOutput(second)
+
+	assert.Equal(t, zerolog.WarnLevel, logger.Level())
+
+	after := logger.Unwrap()
+	after.Info().Msg("filtered")
+	after.Warn().Msg("after")
+
+	assert.Contains(t, first.String(), `"logger":"lecho"`)
+	assert.Contains(t, first.String(), `"message":"before"`)
+	assert.NotContains(t, first.String(), `"message":"after"`)
+	assert.Contains(t, second.String(), `"logger":"lecho"`)
+	assert.NotContains(t, second.String(), `"message":"filtered"`)
+	assert.Contains(t, second.String(), `"message":"after"`)
+}
+
+func TestLoggerOutput(t *testing.T) {
 	b := &bytes.Buffer{}
-	l := lecho.New(b)
+	logger := lecho.New(b, lecho.WithField("logger", "lecho"))
 
-	simpleLogs := []SimpleLog{
-		{
-			Level: zerolog.DebugLevel,
-			Fn:    l.Debug,
-		},
-		{
-			Level: zerolog.InfoLevel,
-			Fn:    l.Info,
-		},
-		{
-			Level: zerolog.WarnLevel,
-			Fn:    l.Warn,
-		},
-		{
-			Level: zerolog.ErrorLevel,
-			Fn:    l.Error,
-		},
-	}
+	written, err := io.WriteString(logger.Output(), "through output")
 
-	for _, l := range simpleLogs {
-		b.Reset()
+	assert.NoError(t, err)
+	assert.Equal(t, len("through output"), written)
+	assert.Contains(t, b.String(), `"logger":"lecho"`)
+	assert.Contains(t, b.String(), `"message":"through output"`)
+}
 
-		l.Fn("foobar")
-		assert.Equal(t, fmt.Sprintf(`{"level":"%s","message":"foobar"}
-`, l.Level),
-			b.String())
-	}
+func TestLoggerSlogSnapshot(t *testing.T) {
+	first := &bytes.Buffer{}
+	second := &bytes.Buffer{}
+	logger := lecho.New(first, lecho.WithLevel(zerolog.InfoLevel))
+	snapshot := logger.Slog()
 
-	formattedLogs := []FormattedLog{
-		{
-			Level: zerolog.DebugLevel,
-			Fn:    l.Debugf,
-		},
-		{
-			Level: zerolog.InfoLevel,
-			Fn:    l.Infof,
-		},
-		{
-			Level: zerolog.WarnLevel,
-			Fn:    l.Warnf,
-		},
-		{
-			Level: zerolog.ErrorLevel,
-			Fn:    l.Errorf,
-		},
-	}
+	logger.SetLevel(zerolog.ErrorLevel)
+	logger.SetOutput(second)
 
-	for _, l := range formattedLogs {
-		b.Reset()
+	snapshot.Info("snapshot")
+	logger.Slog().Info("filtered")
+	logger.Slog().Error("current")
 
-		l.Fn("foo%s", "bar")
-		assert.Equal(t, fmt.Sprintf(`{"level":"%s","message":"foobar"}
-`, l.Level),
-			b.String())
-	}
-
-	jsonLogs := []JSONLog{
-		{
-			Level: zerolog.DebugLevel,
-			Fn:    l.Debugj,
-		},
-		{
-			Level: zerolog.InfoLevel,
-			Fn:    l.Infoj,
-		},
-		{
-			Level: zerolog.WarnLevel,
-			Fn:    l.Warnj,
-		},
-		{
-			Level: zerolog.ErrorLevel,
-			Fn:    l.Errorj,
-		},
-	}
-
-	for _, l := range jsonLogs {
-		b.Reset()
-
-		l.Fn(log.JSON{
-			"message": "foobar",
-		})
-		assert.Equal(t, fmt.Sprintf(`{"level":"%s","message":"foobar"}
-`, l.Level),
-			b.String())
-	}
+	assert.Contains(t, first.String(), `"message":"snapshot"`)
+	assert.NotContains(t, first.String(), `"message":"current"`)
+	assert.NotContains(t, second.String(), `"message":"filtered"`)
+	assert.Contains(t, second.String(), `"message":"current"`)
 }

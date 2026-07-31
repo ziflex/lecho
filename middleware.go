@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 type (
@@ -60,23 +60,8 @@ type (
 	}
 
 	// Enricher is a function that can be used to enrich the logger with additional information.
-	Enricher func(c echo.Context, logger zerolog.Context) zerolog.Context
-
-	// Context is a wrapper around echo.Context that provides a logger.
-	Context struct {
-		echo.Context
-		logger *Logger
-	}
+	Enricher func(c *echo.Context, logger zerolog.Context) zerolog.Context
 )
-
-// NewContext returns a new Context.
-func NewContext(ctx echo.Context, logger *Logger) *Context {
-	return &Context{ctx, logger}
-}
-
-func (c *Context) Logger() echo.Logger {
-	return c.logger
-}
 
 // Middleware returns a middleware which logs HTTP requests.
 func Middleware(config Config) echo.MiddlewareFunc {
@@ -105,7 +90,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 	}
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if config.Skipper(c) {
 				return next(c)
 			}
@@ -147,7 +132,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			// Pass logger down to request context
 			c.SetRequest(req.WithContext(logger.WithContext(ctx)))
-			c = NewContext(c, logger)
+			c.SetLogger(logger.Slog())
 
 			if config.BeforeNext != nil {
 				config.BeforeNext(c)
@@ -155,7 +140,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			if err = next(c); err != nil {
 				if config.HandleError {
-					c.Error(err)
+					c.Echo().HTTPErrorHandler(c, err)
 				}
 			}
 
@@ -167,6 +152,14 @@ func Middleware(config Config) echo.MiddlewareFunc {
 
 			if config.AfterNextEnricher != nil {
 				afterNextLog = config.AfterNextEnricher(c, logger.log.With()).Logger()
+			}
+
+			res = c.Response()
+			response, status := echo.ResolveResponseStatus(res, err)
+			responseSize := int64(-1)
+
+			if response != nil {
+				responseSize = response.Size
 			}
 
 			stop := time.Now()
@@ -186,7 +179,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 			withNewDict := config.NestKey != "" && !config.SkipDefaultFields
 
 			if withNewDict { // Start a new event (dict) if there's a nest key for default fields.
-				evt = zerolog.Dict()
+				evt = mainEvt.CreateDict()
 			} else {
 				evt = mainEvt
 			}
@@ -196,7 +189,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				evt.Str("method", req.Method)
 				evt.Str("uri", req.RequestURI)
 				evt.Str("user_agent", req.UserAgent())
-				evt.Int("status", res.Status)
+				evt.Int("status", status)
 				evt.Str("referer", req.Referer())
 				evt.Dur("latency", latency)
 				evt.Str("latency_human", latency.String())
@@ -207,7 +200,7 @@ func Middleware(config Config) echo.MiddlewareFunc {
 				}
 
 				evt.Str("bytes_in", cl)
-				evt.Str("bytes_out", strconv.FormatInt(res.Size, 10))
+				evt.Str("bytes_out", strconv.FormatInt(responseSize, 10))
 			}
 
 			if withNewDict { // Nest the new event (dict) under the nest key for default fields.

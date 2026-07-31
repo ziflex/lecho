@@ -15,6 +15,7 @@ A high-performance [Zerolog](https://github.com/rs/zerolog) wrapper for [Echo](h
 ## Table of Contents
 
 - [Installation](#installation)
+- [Previous Versions](#previous-versions)
 - [Quick Start](#quick-start)
 - [Configuration Options](#options)
 - [Middleware](#middleware)
@@ -23,17 +24,17 @@ A high-performance [Zerolog](https://github.com/rs/zerolog) wrapper for [Echo](h
 
 ## Installation
 
-Install lecho based on your Echo version:
-
-**For Echo v4 (recommended):**
 ```bash
-go get github.com/ziflex/lecho/v3
+go get github.com/ziflex/lecho/v4
 ```
 
-**For Echo v3 (legacy):**
-```bash
-go get github.com/ziflex/lecho
-```
+## Previous Versions
+
+| Version | Branch |
+|---------|--------|
+| v3 | [`v3`](https://github.com/ziflex/lecho/tree/v3) |
+| v2 | [`v2`](https://github.com/ziflex/lecho/tree/v2) |
+| v1 | [`v1`](https://github.com/ziflex/lecho/tree/v1) |
 
 ## Quick Start
 
@@ -46,13 +47,13 @@ package main
 
 import (
 	"os"
-	"github.com/labstack/echo/v4"
-	"github.com/ziflex/lecho/v3"
+	"github.com/labstack/echo/v5"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
 	e := echo.New()
-	e.Logger = lecho.New(os.Stdout)
+	e.Logger = lecho.New(os.Stdout).Slog()
 	
 	// Your routes and middleware here
 	e.Start(":8080")
@@ -68,9 +69,9 @@ package main
 
 import (
 	"os"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -78,11 +79,14 @@ func main() {
 	log := zerolog.New(os.Stdout).With().Timestamp().Logger()
 	
 	e := echo.New()
-	e.Logger = lecho.From(log)
+	e.Logger = lecho.From(log).Slog()
 	
 	e.Start(":8080")
 }
 ```
+
+`Slog` returns an Echo v5-compatible `*slog.Logger` backed by the current
+Zerolog configuration. Configure the lecho logger before calling `Slog`.
 
 ## Options
 
@@ -93,23 +97,27 @@ package main
 
 import (
 	"os"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
-	"github.com/ziflex/lecho/v3"
+	"github.com/labstack/echo/v5"
+	"github.com/rs/zerolog"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
 	e := echo.New()
-	e.Logger = lecho.New(
+	logger := lecho.New(
 		os.Stdout,
-		lecho.WithLevel(log.DEBUG),                                    // Set log level
-		lecho.WithFields(map[string]interface{}{"service": "api"}),    // Add default fields
+		lecho.WithLevel(zerolog.DebugLevel),                           // Set log level
+		lecho.WithFields(map[string]any{"service": "api"}),            // Add default fields
 		lecho.WithTimestamp(),                                         // Add timestamp to logs
 		lecho.WithCaller(),                                           // Add caller information
 		lecho.WithPrefix("MyApp"),                                    // Add a prefix to logs
 		// lecho.WithHook(myHook),                                    // Add custom hooks
 		// lecho.WithHookFunc(myHookFunc),                            // Add hook functions
 	)
+	e.Logger = logger.Slog()
+
+	log := logger.Unwrap()
+	log.Info().Msg("Application logger configured")
 	
 	e.Start(":8080")
 }
@@ -117,15 +125,38 @@ func main() {
 
 ### Available Options
 
-- **`WithLevel(level log.Lvl)`** - Set the minimum log level (DEBUG, INFO, WARN, ERROR, OFF)
-- **`WithFields(fields map[string]interface{})`** - Add default fields to all log entries
-- **`WithField(key string, value interface{})`** - Add a single default field
+- **`WithLevel(level zerolog.Level)`** - Set the minimum Zerolog level
+- **`WithFields(fields map[string]any)`** - Add default fields to all log entries
+- **`WithField(key string, value any)`** - Add a single default field
 - **`WithTimestamp()`** - Include timestamp in log entries
 - **`WithCaller()`** - Include caller file and line information
 - **`WithCallerWithSkipFrameCount(count int)`** - Include caller info with custom skip frame count
 - **`WithPrefix(prefix string)`** - Add a prefix field to all log entries
 - **`WithHook(hook zerolog.Hook)`** - Add a custom zerolog hook
 - **`WithHookFunc(hookFunc zerolog.HookFunc)`** - Add a custom hook function
+
+### Runtime Configuration
+
+The logger exposes Zerolog-native level and output helpers:
+
+```go
+logger := lecho.New(os.Stdout)
+
+logger.SetLevel(zerolog.WarnLevel)
+level := logger.Level()
+
+logger.SetOutput(os.Stderr)
+writer := logger.Output()
+```
+
+`Output` returns the wrapped Zerolog logger as an `io.Writer`, preserving its
+configured fields, hooks, and level. `SetLevel` and `SetOutput` replace the
+logger configuration used by future calls. Values already returned by
+`Unwrap`, `Output`, `Slog`, or `WithContext` remain snapshots of the earlier
+configuration.
+
+Configure the logger before using it concurrently or assigning `logger.Slog()`
+to Echo.
 
 ## Middleware
 
@@ -139,11 +170,10 @@ package main
 import (
 	"net/http"
 	"os"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -152,11 +182,11 @@ func main() {
 	// Create and configure logger
 	logger := lecho.New(
 		os.Stdout,
-		lecho.WithLevel(log.DEBUG),
+		lecho.WithLevel(zerolog.DebugLevel),
 		lecho.WithTimestamp(),
 		lecho.WithCaller(),
 	)
-	e.Logger = logger
+	e.Logger = logger.Slog()
 	
 	// Add request ID middleware (optional but recommended)
 	e.Use(middleware.RequestID())
@@ -167,12 +197,12 @@ func main() {
 	}))
 	
 	// Example route
-	e.GET("/", func(c echo.Context) error {
-		// Log using Echo's logger interface
+	e.GET("/", func(c *echo.Context) error {
+		// Log using Echo's slog logger
 		c.Logger().Info("Processing request")
 		
 		// Or use zerolog directly from context
-		zerolog.Ctx(c.Request().Context()).Info().Msg("Using zerolog interface")
+		lecho.Ctx(c.Request().Context()).Info().Msg("Using zerolog interface")
 		
 		return c.String(http.StatusOK, "Hello, World!")
 	})
@@ -196,9 +226,9 @@ package main
 import (
 	"os"
 	"time"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -231,8 +261,8 @@ package main
 
 import (
 	"os"
-	"github.com/labstack/echo/v4"
-	"github.com/ziflex/lecho/v3"
+	"github.com/labstack/echo/v5"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -262,9 +292,9 @@ package main
 
 import (
 	"os"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -273,7 +303,7 @@ func main() {
 	
 	e.Use(lecho.Middleware(lecho.Config{
 		Logger: logger,
-		Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+		Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 			// Add user ID if available in context
 			if userID := c.Get("user_id"); userID != nil {
 				logger = logger.Str("user_id", userID.(string))
@@ -289,7 +319,7 @@ func main() {
 	}))
 	
 	// Set up routes that use user context
-	e.GET("/api/profile", func(c echo.Context) error {
+	e.GET("/api/profile", func(c *echo.Context) error {
 		c.Set("user_id", "user123") // This will be logged
 		return c.JSON(200, map[string]string{"status": "ok"})
 	})
@@ -305,9 +335,9 @@ package main
 
 import (
     "os"
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
     "github.com/rs/zerolog"
-    "github.com/ziflex/lecho/v3"
+    "github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -316,14 +346,16 @@ func main() {
     
     e.Use(lecho.Middleware(lecho.Config{
         Logger: logger,
-        AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+        AfterNextEnricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
             // Add response status code after the handler has executed
-            logger = logger.Int("status", c.Response().Status)
+            if response, err := echo.UnwrapResponse(c.Response()); err == nil {
+                logger = logger.Int("status", response.Status)
+            }
             return logger
         },
     }))
     
-    e.GET("/api/profile", func(c echo.Context) error {
+    e.GET("/api/profile", func(c *echo.Context) error {
         c.Set("user_id", "user123") // This will be logged
         return c.JSON(200, map[string]string{"status": "ok"})
     })
@@ -346,8 +378,8 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"github.com/labstack/echo/v4"
-	"github.com/ziflex/lecho/v3"
+	"github.com/labstack/echo/v5"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -361,7 +393,7 @@ func main() {
 	}))
 	
 	// Custom error handler
-	e.HTTPErrorHandler = func(err error, c echo.Context) {
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
 		code := http.StatusInternalServerError
 		if he, ok := err.(*echo.HTTPError); ok {
 			code = he.Code
@@ -370,7 +402,7 @@ func main() {
 	}
 	
 	// Route that may return an error
-	e.GET("/error", func(c echo.Context) error {
+	e.GET("/error", func(c *echo.Context) error {
 		return errors.New("something went wrong")
 	})
 }
@@ -387,7 +419,7 @@ Use `SkipDefaultFields` when you want full control over which request attributes
 e.Use(lecho.Middleware(lecho.Config{
 	Logger:            logger,
 	SkipDefaultFields: true,
-	Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+	Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 		return logger.
 			Str("http.request.method", c.Request().Method).
 			Str("url.path", c.Request().URL.Path)
@@ -408,7 +440,7 @@ The `lecho.Config` struct provides extensive customization options:
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
-| `Logger` | `*lecho.Logger` | Custom logger instance | `lecho.New(os.Stdout, WithTimestamp())` |
+| `Logger` | `*lecho.Logger` | Custom logger instance | `lecho.New(os.Stdout, lecho.WithTimestamp())` |
 | `Skipper` | `middleware.Skipper` | Function to skip middleware | `middleware.DefaultSkipper` |
 | `AfterNextSkipper` | `middleware.Skipper` | Skip logging after handler execution | `middleware.DefaultSkipper` |
 | `BeforeNext` | `middleware.BeforeFunc` | Function executed before next handler | `nil` |
@@ -424,47 +456,19 @@ The `lecho.Config` struct provides extensive customization options:
 
 ## Helpers
 
-### Level Converters
-
-Lecho provides utilities to convert between Echo and Zerolog log levels:
-
-```go
-package main
-
-import (
-	"fmt"
-	"github.com/labstack/gommon/log"
-	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
-)
-
-func main() {
-	// Convert Echo log level to Zerolog level
-	zeroLevel, echoLevel := lecho.MatchEchoLevel(log.WARN)
-	fmt.Printf("Echo WARN -> Zerolog: %s, Echo: %s\n", zeroLevel, echoLevel)
-	
-	// Convert Zerolog level to Echo level
-	echoLevel2, zeroLevel2 := lecho.MatchZeroLevel(zerolog.InfoLevel)
-	fmt.Printf("Zerolog INFO -> Echo: %s, Zerolog: %s\n", echoLevel2, zeroLevel2)
-}
-```
-
 ### Context Logger Access
 
-Access the logger from Echo context in your handlers:
+The middleware installs the request-scoped logger in both Echo's native context
+and the request's standard library context; no custom Echo context wrapper is
+required:
 
 ```go
-e.GET("/api/users", func(c echo.Context) error {
-	// Method 1: Using Echo's logger interface
+e.GET("/api/users", func(c *echo.Context) error {
+	// Method 1: Using Echo's slog logger
 	c.Logger().Info("Fetching users")
 	
 	// Method 2: Using zerolog directly from request context
-	zerolog.Ctx(c.Request().Context()).Info().Str("action", "fetch_users").Msg("Processing request")
-	
-	// Method 3: If using lecho.Context wrapper
-	if lechoCtx, ok := c.(*lecho.Context); ok {
-		lechoCtx.Logger().Info("Using lecho context")
-	}
+	lecho.Ctx(c.Request().Context()).Info().Str("action", "fetch_users").Msg("Processing request")
 	
 	return c.JSON(200, []string{"user1", "user2"})
 })
@@ -481,11 +485,10 @@ import (
 	"net/http"
 	"os"
 	"time"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"github.com/rs/zerolog"
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func main() {
@@ -494,15 +497,15 @@ func main() {
 	// Configure logger with all options
 	logger := lecho.New(
 		os.Stdout,
-		lecho.WithLevel(log.INFO),
+		lecho.WithLevel(zerolog.InfoLevel),
 		lecho.WithTimestamp(),
 		lecho.WithCaller(),
-		lecho.WithFields(map[string]interface{}{
+		lecho.WithFields(map[string]any{
 			"service": "api",
 			"version": "1.0.0",
 		}),
 	)
-	e.Logger = logger
+	e.Logger = logger.Slog()
 	
 	// Add middleware stack
 	e.Use(middleware.RequestID())
@@ -512,34 +515,34 @@ func main() {
 		RequestLatencyLevel: zerolog.WarnLevel,
 		RequestLatencyLimit: 200 * time.Millisecond,
 		NestKey:            "http",
-		Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+		Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 			if userID := c.Get("user_id"); userID != nil {
 				logger = logger.Str("user_id", userID.(string))
 			}
 			return logger
 		},
-		AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+		AfterNextEnricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 			// Example of adding a field after the next handler runs, based on context value
 			logger = logger.Interface("some_key", c.Get("some_key"))
 			return logger
 		},
-		Skipper: func(c echo.Context) bool {
+		Skipper: func(c *echo.Context) bool {
 			// Skip logging for health check endpoints
 			return c.Request().URL.Path == "/health"
 		},
 	}))
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			c.Set("some_key", "some_value") // Example of setting context value for after next enricher
 			return next(c)
 		}
 	})
 	
-	e.GET("/health", func(c echo.Context) error {
+	e.GET("/health", func(c *echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
 	
-	e.GET("/api/slow", func(c echo.Context) error {
+	e.GET("/api/slow", func(c *echo.Context) error {
 		time.Sleep(300 * time.Millisecond) // Simulates slow operation
 		return c.JSON(200, map[string]string{"result": "completed"})
 	})

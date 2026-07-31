@@ -1,89 +1,69 @@
 package lecho
 
-import (
-	"github.com/labstack/gommon/log"
-	"github.com/rs/zerolog"
-)
+import "github.com/rs/zerolog"
 
-type (
-	Options struct {
-		context zerolog.Context
-		level   log.Lvl
-		prefix  string
-	}
+// Option configures a zerolog logger during construction.
+type Option func(zerolog.Logger) zerolog.Logger
 
-	Setter func(opts *Options)
-)
-
-func newOptions(log zerolog.Logger, setters []Setter) *Options {
-	effectiveLevel := GetEffectiveZerologLevel(log)
-	elvl, _ := MatchZeroLevel(effectiveLevel)
-
-	opts := &Options{
-		context: log.With(),
-		level:   elvl,
-	}
-
-	for _, set := range setters {
-		set(opts)
-	}
-
-	return opts
-}
-
-func WithLevel(level log.Lvl) Setter {
-	return func(opts *Options) {
-		zlvl, elvl := MatchEchoLevel(level)
-
-		opts.context = opts.context.Logger().Level(zlvl).With()
-		opts.level = elvl
+// WithLevel sets the logger level.
+func WithLevel(level zerolog.Level) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.Level(level)
 	}
 }
 
-func WithField(name string, value interface{}) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Interface(name, value)
+// WithField adds a field to every log event.
+func WithField(name string, value any) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().Interface(name, value).Logger()
 	}
 }
 
-func WithFields(fields map[string]interface{}) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Fields(fields)
+// WithFields adds fields to every log event.
+func WithFields(fields map[string]any) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().Fields(fields).Logger()
 	}
 }
 
-func WithTimestamp() Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Timestamp()
+// WithTimestamp adds a timestamp to every log event.
+func WithTimestamp() Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().Timestamp().Logger()
 	}
 }
 
-func WithCaller() Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Caller()
+// WithCaller adds caller information to every log event.
+func WithCaller() Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().Caller().Logger()
 	}
 }
 
-func WithCallerWithSkipFrameCount(skipFrameCount int) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.CallerWithSkipFrameCount(skipFrameCount)
+// WithCallerWithSkipFrameCount adds caller information with a custom skip frame count.
+func WithCallerWithSkipFrameCount(skipFrameCount int) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().CallerWithSkipFrameCount(skipFrameCount).Logger()
 	}
 }
 
-func WithPrefix(prefix string) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Str("prefix", prefix)
+// WithPrefix adds a prefix field to every log event.
+func WithPrefix(prefix string) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.With().Str("prefix", prefix).Logger()
 	}
 }
 
-func WithHook(hook zerolog.Hook) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Logger().Hook(hook).With()
+// WithHook adds a hook to the logger.
+func WithHook(hook zerolog.Hook) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.Hook(hook)
 	}
 }
 
-func WithHookFunc(hook zerolog.HookFunc) Setter {
-	return func(opts *Options) {
-		opts.context = opts.context.Logger().Hook(hook).With()
+// WithHookFunc adds a hook function to the logger.
+func WithHookFunc(hook zerolog.HookFunc) Option {
+	return func(logger zerolog.Logger) zerolog.Logger {
+		return logger.Hook(hook)
 	}
 }
