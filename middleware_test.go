@@ -8,19 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/gommon/log"
+	"github.com/labstack/echo/v5"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ziflex/lecho/v3"
+	"github.com/ziflex/lecho/v4"
 )
 
 func TestMiddleware(t *testing.T) {
 	t.Run("should not trigger error handler when HandleError is false", func(t *testing.T) {
 		var called bool
 		e := echo.New()
-		e.HTTPErrorHandler = func(err error, c echo.Context) {
+		e.HTTPErrorHandler = func(c *echo.Context, err error) {
 			called = true
 
 			c.JSON(http.StatusInternalServerError, err.Error())
@@ -32,7 +31,7 @@ func TestMiddleware(t *testing.T) {
 
 		m := lecho.Middleware(lecho.Config{})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return errors.New("error")
 		}
 
@@ -46,7 +45,7 @@ func TestMiddleware(t *testing.T) {
 	t.Run("should trigger error handler when HandleError is true", func(t *testing.T) {
 		var called bool
 		e := echo.New()
-		e.HTTPErrorHandler = func(err error, c echo.Context) {
+		e.HTTPErrorHandler = func(c *echo.Context, err error) {
 			called = true
 
 			c.JSON(http.StatusInternalServerError, err.Error())
@@ -60,7 +59,7 @@ func TestMiddleware(t *testing.T) {
 			HandleError: true,
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return errors.New("error")
 		}
 
@@ -83,12 +82,12 @@ func TestMiddleware(t *testing.T) {
 		l := lecho.New(b)
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				return logger.Str("test", "test")
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
@@ -99,6 +98,43 @@ func TestMiddleware(t *testing.T) {
 
 		str := b.String()
 		assert.Contains(t, str, `"test":"test"`)
+	})
+
+	t.Run("should expose the enriched logger through Echo and request context", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+		m := lecho.Middleware(lecho.Config{
+			Logger: l,
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
+				return logger.Str("request_scope", "yes")
+			},
+		})
+
+		next := func(c *echo.Context) error {
+			c.Logger().Info("from Echo", "source", "slog")
+			lecho.Ctx(c.Request().Context()).
+				Info().
+				Str("source", "request_context").
+				Msg("from Zerolog")
+
+			return c.String(http.StatusCreated, "hello")
+		}
+
+		err := m(next)(c)
+
+		assert.NoError(t, err)
+		str := b.String()
+		assert.Contains(t, str, `"request_scope":"yes","source":"slog"`)
+		assert.Contains(t, str, `"message":"from Echo"`)
+		assert.Contains(t, str, `"request_scope":"yes","source":"request_context"`)
+		assert.Contains(t, str, `"message":"from Zerolog"`)
+		assert.Contains(t, str, `"status":201`)
+		assert.Contains(t, str, `"bytes_out":"5"`)
 	})
 
 	t.Run("should use after next enricher", func(t *testing.T) {
@@ -116,7 +152,7 @@ func TestMiddleware(t *testing.T) {
 
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			AfterNextEnricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				assert.True(t, nextCalled, "after next enricher should run after next")
 				order = append(order, "after")
 
@@ -124,7 +160,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			nextCalled = true
 			order = append(order, "next")
 
@@ -158,13 +194,13 @@ func TestMiddleware(t *testing.T) {
 
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				beforeCalled = true
 				order = append(order, "before")
 
 				return logger.Str("before", "yes")
 			},
-			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			AfterNextEnricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				afterCalled = true
 				// AfterNextEnricher should run after the next handler and after the pre-handler enricher.
 				assert.True(t, beforeCalled, "pre-handler enricher should have been called before after next enricher")
@@ -175,7 +211,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			nextCalled = true
 			order = append(order, "next")
 
@@ -207,7 +243,7 @@ func TestMiddleware(t *testing.T) {
 
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			AfterNextEnricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			AfterNextEnricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				// read value set by handler
 				if v := c.Get("user_id"); v != nil {
 					if userID, ok := v.(string); ok {
@@ -218,7 +254,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			// simulate middleware/handler adding context-specific info
 			c.Set("user_id", "123")
 			return nil
@@ -240,8 +276,7 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		b := &bytes.Buffer{}
-		l := lecho.New(b)
-		l.SetLevel(log.INFO)
+		l := lecho.New(b, lecho.WithLevel(zerolog.InfoLevel))
 		m := lecho.Middleware(lecho.Config{
 			Logger:              l,
 			RequestLatencyLimit: 5 * time.Millisecond,
@@ -249,7 +284,7 @@ func TestMiddleware(t *testing.T) {
 		})
 
 		// Slow request should be logged at the escalated level
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			time.Sleep(5 * time.Millisecond)
 			return nil
 		}
@@ -270,8 +305,7 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		b := &bytes.Buffer{}
-		l := lecho.New(b)
-		l.SetLevel(log.INFO)
+		l := lecho.New(b, lecho.WithLevel(zerolog.InfoLevel))
 		m := lecho.Middleware(lecho.Config{
 			Logger:              l,
 			RequestLatencyLimit: 5 * time.Millisecond,
@@ -279,7 +313,7 @@ func TestMiddleware(t *testing.T) {
 		})
 
 		// Fast request should be logged at the default level
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			time.Sleep(1 * time.Millisecond)
 			return nil
 		}
@@ -302,16 +336,15 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		b := &bytes.Buffer{}
-		l := lecho.New(b)
-		l.SetLevel(log.INFO)
+		l := lecho.New(b, lecho.WithLevel(zerolog.InfoLevel))
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			Skipper: func(c echo.Context) bool {
+			Skipper: func(c *echo.Context) bool {
 				return c.Request().URL.Path == "/skip"
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
@@ -332,16 +365,16 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		b := &bytes.Buffer{}
-		l := lecho.New(b)
-		l.SetLevel(log.INFO)
+		l := lecho.New(b, lecho.WithLevel(zerolog.InfoLevel))
 		m := lecho.Middleware(lecho.Config{
 			Logger: l,
-			AfterNextSkipper: func(c echo.Context) bool {
-				return c.Response().Status == http.StatusMovedPermanently
+			AfterNextSkipper: func(c *echo.Context) bool {
+				response, err := echo.UnwrapResponse(c.Response())
+				return err == nil && response.Status == http.StatusMovedPermanently
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return c.Redirect(http.StatusMovedPermanently, "/other")
 		}
 
@@ -368,7 +401,7 @@ func TestMiddleware(t *testing.T) {
 			Logger: l,
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
@@ -379,6 +412,31 @@ func TestMiddleware(t *testing.T) {
 
 		str := b.String()
 		assert.Contains(t, str, `"method":"GET"`)
+	})
+	t.Run("should use request ID and nest default attributes", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set(echo.HeaderXRequestID, "request-123")
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		b := &bytes.Buffer{}
+		l := lecho.New(b)
+		m := lecho.Middleware(lecho.Config{
+			Logger:  l,
+			NestKey: "request",
+		})
+
+		err := m(func(c *echo.Context) error {
+			return c.NoContent(http.StatusAccepted)
+		})(c)
+
+		assert.NoError(t, err)
+		str := b.String()
+		assert.Contains(t, str, `"id":"request-123"`)
+		assert.Contains(t, str, `"request":{"remote_ip":`)
+		assert.Contains(t, str, `"status":202`)
+		assert.Contains(t, str, `"bytes_out":"0"`)
 	})
 	t.Run("should skip default attributes", func(t *testing.T) {
 		e := echo.New()
@@ -393,7 +451,7 @@ func TestMiddleware(t *testing.T) {
 		m := lecho.Middleware(lecho.Config{
 			Logger:            l,
 			SkipDefaultFields: true,
-			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				val := map[string]any{
 					"http.request.method": c.Request().Method,
 				}
@@ -401,7 +459,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
@@ -428,7 +486,7 @@ func TestMiddleware(t *testing.T) {
 			Logger:            l,
 			SkipDefaultFields: true,
 			NestKey:           "nested",
-			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				val := map[string]any{
 					"http.request.method": c.Request().Method,
 				}
@@ -436,7 +494,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
@@ -466,7 +524,7 @@ func TestMiddleware(t *testing.T) {
 			SkipDefaultFields: true,
 			RequestIDHeader:   "myRequestID",
 			RequestIDKey:      "my.request.id",
-			Enricher: func(c echo.Context, logger zerolog.Context) zerolog.Context {
+			Enricher: func(c *echo.Context, logger zerolog.Context) zerolog.Context {
 				val := map[string]any{
 					"http.request.method": c.Request().Method,
 				}
@@ -474,7 +532,7 @@ func TestMiddleware(t *testing.T) {
 			},
 		})
 
-		next := func(c echo.Context) error {
+		next := func(c *echo.Context) error {
 			return nil
 		}
 
