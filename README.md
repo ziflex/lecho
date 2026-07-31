@@ -15,6 +15,7 @@ A high-performance [Zerolog](https://github.com/rs/zerolog) wrapper for [Echo](h
 ## Table of Contents
 
 - [Installation](#installation)
+- [Previous Versions](#previous-versions)
 - [Quick Start](#quick-start)
 - [Configuration Options](#options)
 - [Middleware](#middleware)
@@ -23,22 +24,17 @@ A high-performance [Zerolog](https://github.com/rs/zerolog) wrapper for [Echo](h
 
 ## Installation
 
-Install lecho based on your Echo version:
-
-**For Echo v5:**
 ```bash
 go get github.com/ziflex/lecho/v4
 ```
 
-**For Echo v4:**
-```bash
-go get github.com/ziflex/lecho/v3
-```
+## Previous Versions
 
-**For Echo v3 (legacy):**
-```bash
-go get github.com/ziflex/lecho
-```
+| Version | Branch |
+|---------|--------|
+| v3 | [`v3`](https://github.com/ziflex/lecho/tree/v3) |
+| v2 | [`v2`](https://github.com/ziflex/lecho/tree/v2) |
+| v1 | [`v1`](https://github.com/ziflex/lecho/tree/v1) |
 
 ## Quick Start
 
